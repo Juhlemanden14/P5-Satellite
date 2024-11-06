@@ -41,11 +41,21 @@ void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
 
     for (uint32_t i = 0; i < n.GetN(); i++){
         NS_LOG_UNCOND("Node " << i);
+        
         ObjectMapValue m_sockets;
         n.Get(i)->GetObject<TcpL4Protocol>()->GetAttribute("SocketList", m_sockets);
-
-        DynamicCast<>(m_sockets.Get(0)); ObjectMapValue<TcpSocketBase>()
         
+
+        if (m_sockets.GetN() >= 1) {
+            NS_LOG_UNCOND("     Socket count: " << m_sockets.GetN());
+
+            NS_LOG_UNCOND(m_sockets.Get(0)->GetTypeId().GetName());
+            Ptr<TcpSocketBase> socket = DynamicCast<TcpSocketBase>(m_sockets.Get(0));
+            NS_LOG_UNCOND(socket->GetTypeId().GetName());
+            NS_LOG_UNCOND(socket->GetMinRto());
+            socket->SetMinRto(Time(Seconds(2)));
+            NS_LOG_UNCOND(socket->GetMinRto());
+        }
 
 
         // std::pair<const uint64_t, ns3::Ptr<ns3::TcpSocketBase>> &socketItem
@@ -54,9 +64,8 @@ void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
         // }
 
         
-        for (ObjectPtrContainerValue::Iterator it = m_sockets.Begin(); it != m_sockets.End(); ++it) {
-            NS_LOG_UNCOND("     Socket here");
-        }
+        // for (ObjectPtrContainerValue::Iterator it = m_sockets.Begin(); it != m_sockets.End(); ++it) {
+        // }
     }
 }
 
@@ -141,7 +150,7 @@ int main(int argc, char* argv[]) {
     onOffHelper.SetAttribute("PacketSize", UintegerValue(512));
     ApplicationContainer clientApps = onOffHelper.Install(nodes.Get(6));
     clientApps.Start(Seconds(0.1));
-    clientApps.Stop(Seconds(15));
+    clientApps.Stop(Seconds(1));
 
 
     // Config::ConnectWithoutContext("/NodeList/0/$ns3::TcpL4Protocol/SocketList/0/CongestionWindow",
