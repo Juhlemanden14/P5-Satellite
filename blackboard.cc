@@ -13,6 +13,10 @@
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 
+#include "ns3/flow-monitor-module.h"
+#include "ns3/packet-sink.h"
+#include "ns3/traffic-control-module.h"
+
 #include "ns3/netanim-module.h"     // NetAnimator
 #include "ns3/mobility-module.h"    // Mobility module to give them position
 using namespace ns3;
@@ -25,6 +29,11 @@ void PacketReceived(Ptr<const Packet> packet, const Address& address) {
     receivedPackets++;
     NS_LOG_DEBUG("Server received a packet[" << receivedPackets << "] of " << packet->GetSize() << " bytes. From " << address);
 }
+
+// static void CwndTracer(uint32_t oldval, uint32_t newval) {
+//     NS_LOG_INFO("Moving cwnd from " << oldval << " to " << newval);
+// }
+
 
 int main(int argc, char* argv[]) {
     LogComponentEnable("GlobalRouteManager", LOG_LEVEL_ALL);
@@ -95,6 +104,15 @@ int main(int argc, char* argv[]) {
     ApplicationContainer clientApps = onOffHelper.Install(nodes.Get(6));
     clientApps.Start(Seconds(0));
     clientApps.Stop(Seconds(5));
+
+
+    // Config::ConnectWithoutContext("/NodeList/0/$ns3::TcpL4Protocol/SocketList/0/CongestionWindow",
+    //                               MakeCallback(&CwndTracer));
+
+    // std::unordered_map<uint64_t, Ptr<TcpSocketBase>> m_sockets;
+    ObjectMapValue m_sockets;
+    nodes.Get(6)->GetObject<TcpL4Protocol>()->GetAttribute("SocketList", m_sockets);
+    NS_LOG_UNCOND(m_sockets.Get(6));
 
 
     
