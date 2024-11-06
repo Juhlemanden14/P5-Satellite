@@ -1,9 +1,7 @@
 /*
  * Author: P5
  */
-
 // P5 Blackboard Topology
-
 
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
@@ -12,10 +10,6 @@
 #include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
-
-#include "ns3/flow-monitor-module.h"
-#include "ns3/packet-sink.h"
-#include "ns3/traffic-control-module.h"
 
 #include "ns3/netanim-module.h"     // NetAnimator
 #include "ns3/mobility-module.h"    // Mobility module to give them position
@@ -30,20 +24,52 @@ void PacketReceived(Ptr<const Packet> packet, const Address& address) {
     NS_LOG_DEBUG("Server received a packet[" << receivedPackets << "] of " << packet->GetSize() << " bytes. From " << address);
 }
 
-// static void CwndTracer(uint32_t oldval, uint32_t newval) {
-//     NS_LOG_INFO("Moving cwnd from " << oldval << " to " << newval);
+// Trace congestion window
+static void CwndTracer(uint32_t oldval, uint32_t newval) {
+    NS_LOG_UNCOND(Simulator::Now().GetSeconds() << " > \t" << oldval << " --> " << newval);
+}
+// static void CwndChange(uint32_t oldCwnd, uint32_t newCwnd)
+// {
+//     NS_LOG_UNCOND(Simulator::Now().GetSeconds() << "\t" << newCwnd);
 // }
+
+void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
+
+    NS_LOG_UNCOND("CW Window traced Node id: " << nodeId << " socketid: " << socketId);
+    Config::ConnectWithoutContext("/NodeList/" + std::to_string(nodeId) + "/$ns3::TcpL4Protocol/SocketList/" + std::to_string(socketId) + "/CongestionWindow", MakeBoundCallback(&CwndTracer));
+
+
+    for (uint32_t i = 0; i < n.GetN(); i++){
+        NS_LOG_UNCOND("Node " << i);
+        ObjectMapValue m_sockets;
+        n.Get(i)->GetObject<TcpL4Protocol>()->GetAttribute("SocketList", m_sockets);
+
+        DynamicCast<>(m_sockets.Get(0)); ObjectMapValue<TcpSocketBase>()
+        
+
+
+        // std::pair<const uint64_t, ns3::Ptr<ns3::TcpSocketBase>> &socketItem
+        // for (auto& socketItem : m_sockets) {
+        //     NS_LOG_UNCOND("Hej");
+        // }
+
+        
+        for (ObjectPtrContainerValue::Iterator it = m_sockets.Begin(); it != m_sockets.End(); ++it) {
+            NS_LOG_UNCOND("     Socket here");
+        }
+    }
+}
 
 
 int main(int argc, char* argv[]) {
-    LogComponentEnable("GlobalRouteManager", LOG_LEVEL_ALL);
+    // LogComponentEnable("GlobalRouteManager", LOG_LEVEL_ALL);
     // LogComponentEnable("GlobalRouteManagerImpl", LOG_LEVEL_ALL);
 
-
-    Config::SetDefault("ns3::Ipv4GlobalRouting::RespondToInterfaceEvents", BooleanValue(true));
+    // Auto recompute routes at link changes
+    // Config::SetDefault("ns3::Ipv4GlobalRouting::RespondToInterfaceEvents", BooleanValue(true));
     Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
-    PacketMetadata::Enable();
 
+    PacketMetadata::Enable();
 
     std::string targetIP = "10.1.1.1";
     CommandLine cmd(__FILE__);
@@ -54,16 +80,18 @@ int main(int argc, char* argv[]) {
     InternetStackHelper stack;
     stack.Install(nodes);
 
-    // PointToPointHelper csma;
-    CsmaHelper csma;     // Error for some fucking reason
-    NetDeviceContainer n0n1 = csma.Install(NodeContainer(nodes.Get(0), nodes.Get(1)));
-    NetDeviceContainer n0n3 = csma.Install(NodeContainer(nodes.Get(0), nodes.Get(3)));
-    NetDeviceContainer n1n2 = csma.Install(NodeContainer(nodes.Get(1), nodes.Get(2)));
-    NetDeviceContainer n3n4 = csma.Install(NodeContainer(nodes.Get(3), nodes.Get(4)));
-    NetDeviceContainer n2n4 = csma.Install(NodeContainer(nodes.Get(2), nodes.Get(4)));
-    NetDeviceContainer n2n5 = csma.Install(NodeContainer(nodes.Get(2), nodes.Get(5)));
+    // PointToPointHelper csmaHelper;
+    CsmaHelper csmaHelper;     // Error for some fucking reason
+    NetDeviceContainer n0n1 = csmaHelper.Install(NodeContainer(nodes.Get(0), nodes.Get(1)));
+    NetDeviceContainer n0n3 = csmaHelper.Install(NodeContainer(nodes.Get(0), nodes.Get(3)));
+    NetDeviceContainer n1n2 = csmaHelper.Install(NodeContainer(nodes.Get(1), nodes.Get(2)));
+    NetDeviceContainer n2n4 = csmaHelper.Install(NodeContainer(nodes.Get(2), nodes.Get(4)));
+    NetDeviceContainer n2n5 = csmaHelper.Install(NodeContainer(nodes.Get(2), nodes.Get(5)));
+    NetDeviceContainer n0n6 = csmaHelper.Install(NodeContainer(nodes.Get(0), nodes.Get(6)));
+    // Fuck one of the link in the lower region
+    csmaHelper.SetChannelAttribute("DataRate", StringValue("1KBps"));
+    NetDeviceContainer n3n4 = csmaHelper.Install(NodeContainer(nodes.Get(3), nodes.Get(4)));
 
-    NetDeviceContainer n0n6 = csma.Install(NodeContainer(nodes.Get(0), nodes.Get(6)));
 
     Ipv4AddressHelper address;
     address.SetBase("10.1.1.0", "255.255.255.0");
@@ -82,12 +110,22 @@ int main(int argc, char* argv[]) {
     Ipv4InterfaceContainer In0n6 = address.Assign(n0n6);
 
 
-    Ptr<Ipv4> ipv41 = nodes.Get(1)->GetObject<Ipv4>();
-    // The first ifIndex is 0 for loopback, then the first p2p is numbered 1,
-    // then the next p2p is numbered 2
-    uint32_t ipv4ifIndex1 = 2;
-    Simulator::Schedule(Seconds(1), &Ipv4::SetDown, ipv41, ipv4ifIndex1);
-    Simulator::Schedule(Seconds(2), &Ipv4::SetUp, ipv41, ipv4ifIndex1);
+    Ptr<Ipv4> ipv11 = nodes.Get(1)->GetObject<Ipv4>();
+    // The first ifIndex is 0 for loopback, then the first p2p is numbered 1, then the next p2p is numbered 2
+    uint32_t ipv4Index = 2;
+    Simulator::Schedule(Seconds(1), &Ipv4::SetDown, ipv11, ipv4Index);
+    Simulator::Schedule(Seconds(2), &Ipv4GlobalRoutingHelper::PopulateRoutingTables);
+
+    Simulator::Schedule(Seconds(6), &Ipv4::SetUp, ipv11, ipv4Index);
+    Simulator::Schedule(Seconds(7), &Ipv4GlobalRoutingHelper::PopulateRoutingTables);
+
+    Ptr<Ipv4> ipv41 = nodes.Get(4)->GetObject<Ipv4>();
+    Simulator::Schedule(Seconds(3), &Ipv4::SetDown, ipv41, 2);
+    Simulator::Schedule(Seconds(4), &Ipv4GlobalRoutingHelper::PopulateRoutingTables);
+
+
+    Config::SetDefault("ns3::TcpSocketBase::MinRto", TimeValue(Seconds(1)));
+
 
 
     // TCP Server receiving data
@@ -102,20 +140,17 @@ int main(int argc, char* argv[]) {
     onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.0]"));
     onOffHelper.SetAttribute("PacketSize", UintegerValue(512));
     ApplicationContainer clientApps = onOffHelper.Install(nodes.Get(6));
-    clientApps.Start(Seconds(0));
-    clientApps.Stop(Seconds(5));
+    clientApps.Start(Seconds(0.1));
+    clientApps.Stop(Seconds(15));
 
 
     // Config::ConnectWithoutContext("/NodeList/0/$ns3::TcpL4Protocol/SocketList/0/CongestionWindow",
     //                               MakeCallback(&CwndTracer));
 
     // std::unordered_map<uint64_t, Ptr<TcpSocketBase>> m_sockets;
-    ObjectMapValue m_sockets;
-    nodes.Get(6)->GetObject<TcpL4Protocol>()->GetAttribute("SocketList", m_sockets);
-    NS_LOG_UNCOND(m_sockets.Get(6));
+    Simulator::Schedule(Seconds(0.1) + MilliSeconds(1), &TraceCwnd, nodes, 6, 0);
 
 
-    
     // Populate every nodes routing table using God Routing
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
@@ -138,7 +173,7 @@ int main(int argc, char* argv[]) {
 
 
     // Generate .pcap files from each node
-    csma.EnablePcapAll("blackboard", true);
+    csmaHelper.EnablePcapAll("blackboard", true);
 
     NS_LOG_UNCOND("[+] Simulation started");
     Simulator::Run();
