@@ -65,6 +65,8 @@ void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
             socket->SetMinRto(Time(Seconds(2)));
             
             NS_LOG_UNCOND(socket->GetMinRto());
+
+            NS_LOG_UNCOND(socket->GetSocketType());
         }
 
 
@@ -172,7 +174,6 @@ int main(int argc, char* argv[]) {
 
     // Populate every nodes routing table using God Routing
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-
 
 
     //Simulation NetAnim configuration and node placement
