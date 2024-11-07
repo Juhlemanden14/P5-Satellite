@@ -33,6 +33,15 @@ $ cd magister-stats
 $ git checkout 5b3cc38f24d823be89acb945ac1cf5f55cbac7b2
 ```
 
-
+Configure and build ns3.40
+```
+$ cd ..
+$ ./ns3 configure $NS3_P5
+$ ./ns3 build
+```
+After the build has finished run the tests
+```
+$ ./test.py
+```
 
 
