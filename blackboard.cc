@@ -26,19 +26,28 @@ void PacketReceived(Ptr<const Packet> packet, const Address& address) {
 
 // Trace congestion window
 static void CwndTracer(uint32_t oldval, uint32_t newval) {
-    NS_LOG_UNCOND(Simulator::Now().GetSeconds() << " > \t" << oldval << " --> " << newval);
+    NS_LOG_UNCOND( "CWND: " << Simulator::Now().GetSeconds() << " > \t" << oldval << " --> " << newval);
 }
 // static void CwndChange(uint32_t oldCwnd, uint32_t newCwnd)
 // {
 //     NS_LOG_UNCOND(Simulator::Now().GetSeconds() << "\t" << newCwnd);
 // }
 
+void RWNDTracer(uint32_t oldval, uint32_t newval) {
+    NS_LOG_UNCOND( "RWND: " << Simulator::Now().GetSeconds() << " > \t" << oldval << " --> " << newval);
+}
+
+void AdvWNDTracer(uint32_t oldval, uint32_t newval) {
+    NS_LOG_UNCOND( "AdvWND: " << Simulator::Now().GetSeconds() << " > \t" << oldval << " --> " << newval);
+}
+
 void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
 
     NS_LOG_UNCOND("CW Window traced Node id: " << nodeId << " socketid: " << socketId);
     Config::ConnectWithoutContext("/NodeList/" + std::to_string(nodeId) + "/$ns3::TcpL4Protocol/SocketList/" + std::to_string(socketId) + "/CongestionWindow", MakeBoundCallback(&CwndTracer));
-
-
+    Config::ConnectWithoutContext("/NodeList/" + std::to_string(nodeId) + "/$ns3::TcpL4Protocol/SocketList/" + std::to_string(socketId) + "/RWND", MakeBoundCallback(&RWNDTracer));
+    Config::ConnectWithoutContext("/NodeList/" + std::to_string(nodeId) + "/$ns3::TcpL4Protocol/SocketList/" + std::to_string(socketId) + "/AdvWND", MakeBoundCallback(&AdvWNDTracer));
+    
     for (uint32_t i = 0; i < n.GetN(); i++){
         NS_LOG_UNCOND("Node " << i);
         
@@ -54,6 +63,7 @@ void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
             NS_LOG_UNCOND(socket->GetTypeId().GetName());
             NS_LOG_UNCOND(socket->GetMinRto());
             socket->SetMinRto(Time(Seconds(2)));
+            
             NS_LOG_UNCOND(socket->GetMinRto());
         }
 
@@ -150,7 +160,7 @@ int main(int argc, char* argv[]) {
     onOffHelper.SetAttribute("PacketSize", UintegerValue(512));
     ApplicationContainer clientApps = onOffHelper.Install(nodes.Get(6));
     clientApps.Start(Seconds(0.1));
-    clientApps.Stop(Seconds(1));
+    clientApps.Stop(Seconds(10));
 
 
     // Config::ConnectWithoutContext("/NodeList/0/$ns3::TcpL4Protocol/SocketList/0/CongestionWindow",
