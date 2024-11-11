@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
     // Create nodes using a container.
     NodeContainer nodes;
     // Add n new nodes.
-    int node_amount = 8;
+    int node_amount = 9;
     nodes.Create(node_amount);
 
     // Set the attributes for the channel.
@@ -128,11 +128,14 @@ int main(int argc, char* argv[]) {
     anim.SetConstantPosition(nodes.Get(5), 15.3754, -78.1328); // 78°13'28"N 15°37'54"E
     anim.UpdateNodeDescription(nodes.Get(5), "Longyearbyen");
 
-    anim.SetConstantPosition(nodes.Get(6), 82.2222, -23.0723); // 23°07'23"N 82°22'22"W
+    anim.SetConstantPosition(nodes.Get(6), -82.2222, -23.0723); // 23°07'23"N 82°22'22"W
     anim.UpdateNodeDescription(nodes.Get(6), "Havana");
 
     anim.SetConstantPosition(nodes.Get(7), 151.1108, 33.5655); // 33°56'55"S 151°11'08"E
     anim.UpdateNodeDescription(nodes.Get(7), "Sydney");
+
+    anim.SetConstantPosition(nodes.Get(8), -2.038273, -4.7529124);
+    anim.UpdateNodeDescription(nodes.Get(8), "Fort Dorothea");
 
 
     // NodeContainer dummyNodes = NodeContainer(4);
@@ -140,7 +143,7 @@ int main(int argc, char* argv[]) {
 
 
     // Scale to 360/2048 (360 degrees for 2048 pixels)
-    anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
+    anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-bw.jpeg", -180, -90, 0.17578125, 0.17578125, 1);
 
     // Generate .pcap files from each node.
     csma.EnablePcapAll("test-1", true);
