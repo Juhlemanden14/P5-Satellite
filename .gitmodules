@@ -1,0 +1,3 @@
+[submodule "TLE_handling/sgp4"]
+	path = TLE_handling/sgp4
+	url = https://github.com/dnwrnr/sgp4.git
