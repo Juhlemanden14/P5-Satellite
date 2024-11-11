@@ -135,8 +135,8 @@ int main(int argc, char* argv[]) {
     anim.UpdateNodeDescription(nodes.Get(7), "Sydney");
 
 
-    NodeContainer dummyNodes = NodeContainer(4);
-    anim.SetConstantPosition(nodes.Get(0), 1, 1);
+    // NodeContainer dummyNodes = NodeContainer(4);
+    // anim.SetConstantPosition(nodes.Get(0), 1, 1);
 
 
     // Scale to 360/2048 (360 degrees for 2048 pixels)
