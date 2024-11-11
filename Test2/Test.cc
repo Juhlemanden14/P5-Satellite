@@ -35,7 +35,6 @@ int main(int argc, char* argv[]) {
 
     // Create nodes using a container.
     NodeContainer nodes;
-
     // Add n new nodes.
     int node_amount = 4;
     nodes.Create(node_amount);
@@ -112,18 +111,23 @@ int main(int argc, char* argv[]) {
     int m = 0;
     for (int n = 0; n < (node_amount/2); ++n) {
         for (int j = 0; j < (node_amount/2); ++j) {
-            anim.SetConstantPosition(nodes.Get(m), 20*n, 20*j);
+            anim.SetConstantPosition(nodes.Get(m), 360*n-180, 180*j-90);
+            
+            anim.UpdateNodeSize(m, 10, 10);
             ++m;
         }
     }
-
-    anim.SetConstantPosition(nodes.Get(2), 20, 0);
     // Set desc for server and client in the animation.
     anim.UpdateNodeDescription(nodes.Get(1), "Server");
     anim.UpdateNodeDescription(nodes.Get(2), "Client");
     anim.UpdateNodeDescription(nodes.Get(3), "Client2");
 
-    anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map-scaled.jpg", 0, 0, 10, 10, 1);
+    NodeContainer dummyNodes = NodeContainer(4);
+    anim.SetConstantPosition(nodes.Get(0), 1, 1);
+
+
+    // Scale to 360/2048 (360 degrees for 2048 pixels)
+    anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
 
     // Generate .pcap files from each node.
     csma.EnablePcapAll("test-1", true);
