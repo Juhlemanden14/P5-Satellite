@@ -119,6 +119,13 @@ int main(int argc, char *argv[]) {
                     std::cout << "time: " << t_check.GetSeconds() << " sec, Dist from 0 to 1: "
                             << dist/1000 << "km. "<< std::endl;
                 }
+
+                ns3::Vector v = satMobility->GetVelocity();
+                if (verbose) {
+                    std::cout << "time: " << t_check.GetSeconds() << " sec, Velocity: (x = "
+                            << v.x << ", y = " << v.y << ", z = " << v.z << std::endl;
+                }
+
             });
     };
 
