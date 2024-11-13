@@ -24,7 +24,7 @@ def fetch_TLEs(constellation_name):
     response.raise_for_status()
     
     # get the date
-    ts = time.localtime(time.time())
+    ts = time.gmtime(time.time())
     print(ts.tm_mday, ts.tm_mon, ts.tm_year)
 
     # Save the TLE data to a .txt file named after the constellation and the date
