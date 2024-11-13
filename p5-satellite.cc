@@ -36,8 +36,6 @@ int main(int argc, char* argv[]) {
     NS_LOG_INFO("[+] Imported TLE data for " << TLEVector.size() << " satellites, with age " << TLEAge);
     NS_ASSERT_MSG(TLEVector.size() != 0, "No satellites were imported?");
 
-    
-    
     // If no amount of sallites are specified, set equal to the amount of satellites in the TLE data
     if (satelliteCount == 0) {
         satelliteCount = TLEVector.size();
@@ -50,7 +48,7 @@ int main(int argc, char* argv[]) {
     // ========================================= Node Setup =========================================
     NodeContainer satellites(satelliteCount);
     NodeContainer groundStations(2);
-    NS_LOG_INFO("[+] " << satelliteCount << " Satellites nodes have been created");
+    NS_LOG_INFO("[+] " << satelliteCount << " satellite nodes have been created");
 
     // Install the internet stack on the satellites and the ground stations.
     InternetStackHelper stackHelper;
@@ -62,30 +60,33 @@ int main(int argc, char* argv[]) {
     std::string formatted_TLE;
     for (int n = 0; n < satelliteCount; ++n) {
         Ptr<SatSGP4MobilityModel> satMobility = CreateObject<SatSGP4MobilityModel>();
+        
         // Format the two lines into a single string for NS-3 compatibility - IT MUST BE line1\nline2 WITH NO SPACES!!!
         formatted_TLE = TLEVector[n].line1 + "\n" + TLEVector[n].line2; 
         satMobility->SetTleInfo(formatted_TLE);
-        // Set the simulation startdate
+        // Set the simulation absolute start time in string format.
         satMobility->SetStartDate(TLEAge);
-
         satellites.Get(n)->AggregateObject(satMobility);
 
         // Give each satellite a name equal to the one specified in the TLE data
         Names::Add(TLEVector[n].name, satellites.Get(n));
+
+        Ptr<Node> t = Names::Find<Node>(TLEVector[n].name);
+        NS_LOG_DEBUG(TLEVector[n].name << " coords " << t->GetObject<SatMobilityModel>()->GetGeoPosition());
     }
     NS_LOG_INFO("[+] SatSGP4 Mobilty installed on satellites");
+
+    
+    double distance = satellites.Get(2)->GetObject<SatMobilityModel>()->GetDistanceFrom(satellites.Get(6)->GetObject<SatMobilityModel>());
+    NS_LOG_DEBUG("Distance between satellite 0 and 1 is -> " << distance/1000 << " km");
 
 
     for (size_t n = 0; n < 2; ++n) {
         // Ptr<Node> gs  = groundStations.Get(n);
     }
-
     exit(0);
     // ==============================================================================================
-    
 
-
-    
     // PointToPointHelper pointToPoint;
     // pointToPoint.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
     // pointToPoint.SetChannelAttribute("Delay", StringValue("2ms"));
@@ -100,6 +101,7 @@ int main(int argc, char* argv[]) {
     // address.SetBase("10.1.1.0", "255.255.255.0");
     // Ipv4InterfaceContainer interfaces = address.Assign(devices);
 
+    NS_LOG_UNCOND("[!] Simulation is running!");
     Simulator::Run();
     Simulator::Destroy();
     return 0;

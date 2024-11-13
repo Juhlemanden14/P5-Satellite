@@ -18,8 +18,6 @@ std::vector<TLE> ReadTLEFile(const std::string &filename, std::string &TLEAge) {
     std::getline(file, TLEAge);
     TrimTrailingSpaces(TLEAge);
     
-
-    
     while (std::getline(file, line)) {  // loop over all lines
         TLE tleEntry;
         tleEntry.name = line;         // First line is the satellite name, collect 3 lines at a time in the 'if'
