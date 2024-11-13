@@ -1,3 +1,4 @@
+// NS-3 and SNS-3 includes
 #include "ns3/satellite-module.h"
 
 #include "ns3/core-module.h"
@@ -6,21 +7,24 @@
 
 using namespace ns3;
 
-// // TODO! Haven't tested if it can read the TLE data properly
-// std::vector<TLE> ReadTLEFile(const std::string &filename) {
-//     std::ifstream file(filename);
-//     std::vector<TLE> tleData;
-//     std::string line;
+// Function to read TLE file and format data into compatible string format
+std::vector<std::string> ReadTLEFile(const std::string &filename) {
+    std::ifstream file(filename);
+    std::vector<std::string> tleData;
+    std::string line;
     
-//     while (std::getline(file, line)) {
-//         TLE tle;
-//         tle.name = line;
-//         std::getline(file, tle.line1);
-//         std::getline(file, tle.line2);
-//         tleData.push_back(tle);
-//     }
-//     return tleData;
-// }
+    while (std::getline(file, line)) {
+        std::string name = line;         // First line is the satellite name
+        std::string line1, line2;
+        if (std::getline(file, line1) && std::getline(file, line2)) {
+            // Format the two lines into a single string for NS-3 compatibility
+            std::string formattedTLE = name + "\n" + line1 + "\n" + line2;
+            tleData.push_back(formattedTLE);
+        }
+    }
+
+    return tleData;
+}
 
 
 void PrintSatellitePosition(Ptr<SatSGP4MobilityModel> satMobility, int interval, int steps) {
@@ -63,9 +67,19 @@ int main(int argc, char *argv[]) {
     Simulator::Destroy();
     std::cout << "===== End of simulation =====" << std::endl;
 
-    return 0;
 
+
+
+
+
+    // file TLE stuff - file path has to be specified so that NS-3 can find it!
+    std::string filename = "scratch/P5-Satellite/TLE_handling/starlink_11-11-2024_tle_data.txt";
+    std::vector<std::string> tleDataVec = ReadTLEFile(filename);    // Read and format the TLE data
+    // for (const auto &tle : tleDataVec) {                         // Display each TLE entry
+    //     std::cout << "TLE Entry:\n" << tle << "\n\n";
+    // }
+    std::cout << "TLE Entry 0:\n" << tleDataVec[0] << "\n\n";
+
+    return 0;
     
 }
-
-
