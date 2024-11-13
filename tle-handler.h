@@ -8,4 +8,4 @@ struct TLE {
 
 void TrimTrailingSpaces(std::string &str);
 
-std::vector<TLE> ReadTLEFile(const std::string &filename);
+std::vector<TLE> ReadTLEFile(const std::string &filename, std::string &TLEAge);

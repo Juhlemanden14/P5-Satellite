@@ -28,15 +28,17 @@ def fetch_TLEs(constellation_name):
     print(ts.tm_mday, ts.tm_mon, ts.tm_year)
 
     # Save the TLE data to a .txt file named after the constellation and the date
-    file_path = "scratch/P5-Satellite/TLE_handling/"
+    file_path = "scratch/P5-Satellite/TLE-handling/"
     file_name = f"{constellation_name}_{ts.tm_mday}-{ts.tm_mon}-{ts.tm_year}_tle_data.txt"
+
     with open(file_path + file_name, 'w') as file:
+        file.write(f"{ts.tm_year}-{str(ts.tm_mon).zfill(2)}-{str(ts.tm_mday).zfill(2)} {str(ts.tm_hour).zfill(2)}:{str(ts.tm_min).zfill(2)}:{str(ts.tm_sec).zfill(2)}\n")
         file.write(response.text)
 
     # Save the exact point in time of when the data was fetched. For reproducibility and documentation
-    file_name = f"{constellation_name}_{ts.tm_mday}-{ts.tm_mon}-{ts.tm_year}_tle_age.txt"
-    with open(file_path + file_name, 'w') as file:
-        file.write(f"{ts.tm_hour}:{ts.tm_min}:{ts.tm_sec} {ts.tm_mday}-{ts.tm_mon}-{ts.tm_year}")
+    # file_name = f"{constellation_name}_{ts.tm_mday}-{ts.tm_mon}-{ts.tm_year}_tle_age.txt"
+    # with open(file_path + file_name, 'w') as file:
+    #     file.write(f"{ts.tm_hour}:{ts.tm_min}:{ts.tm_sec} {ts.tm_mday}-{ts.tm_mon}-{ts.tm_year}")
 
 
 

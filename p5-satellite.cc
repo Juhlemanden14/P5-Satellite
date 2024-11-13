@@ -14,41 +14,91 @@ NS_LOG_COMPONENT_DEFINE("P5-Satellite");
 
 int main(int argc, char* argv[]) {
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
+    Time::SetResolution(Time::NS);
     
     // ========================================= Setup default commandline parameters  =========================================
-    std::string tleDataPath = "scratch/P5-Satellite/TLE-data/starlink_12-11-2024_tle_data.txt";
+    std::string tleDataPath = "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_tle_data.txt";
+    int satelliteCount = 0;
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
+    cmd.AddValue("satCount", "The amount of satellites", satelliteCount);
     cmd.Parse(argc, argv);
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
-    // ========================================= Setup default commandline parameters  =========================================
+    // ==========================================================================================================================
+
 
     
-    std::vector<TLE> TLEVector = ReadTLEFile(tleDataPath);
 
-    NS_LOG_INFO(TLEVector.size());
+    // ========================================= Import TLE data =========================================
+    std::string TLEAge;
+    std::vector<TLE> TLEVector = ReadTLEFile(tleDataPath, TLEAge);
+    NS_LOG_INFO("[+] Imported TLE data for " << TLEVector.size() << " satellites, with age " << TLEAge);
+    NS_ASSERT_MSG(TLEVector.size() != 0, "No satellites were imported?");
 
-    NS_LOG_INFO(TLEVector[0].name);
     
-    Time::SetResolution(Time::NS);
-
-    NodeContainer nodes;
-    nodes.Create(2);
     
-    PointToPointHelper pointToPoint;
-    pointToPoint.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
-    pointToPoint.SetChannelAttribute("Delay", StringValue("2ms"));
+    // If no amount of sallites are specified, set equal to the amount of satellites in the TLE data
+    if (satelliteCount == 0) {
+        satelliteCount = TLEVector.size();
+    }
+    // =================================================================================================== 
+    
 
-    NetDeviceContainer devices;
-    devices = pointToPoint.Install(nodes);
 
-    InternetStackHelper stack;
-    stack.Install(nodes);
+    
+    // ========================================= Node Setup =========================================
+    NodeContainer satellites(satelliteCount);
+    NodeContainer groundStations(2);
+    NS_LOG_INFO("[+] " << satelliteCount << " Satellites nodes have been created");
 
-    Ipv4AddressHelper address;
-    address.SetBase("10.1.1.0", "255.255.255.0");
-    Ipv4InterfaceContainer interfaces = address.Assign(devices);
+    // Install the internet stack on the satellites and the ground stations.
+    InternetStackHelper stackHelper;
+    stackHelper.Install(satellites);
+    stackHelper.Install(groundStations);
+    NS_LOG_INFO("[+] Internet stack installed");
+    
+    // Create and aggregate the Satellite SGP4 mobility model to each satellite
+    std::string formatted_TLE;
+    for (int n = 0; n < satelliteCount; ++n) {
+        Ptr<SatSGP4MobilityModel> satMobility = CreateObject<SatSGP4MobilityModel>();
+        // Format the two lines into a single string for NS-3 compatibility - IT MUST BE line1\nline2 WITH NO SPACES!!!
+        formatted_TLE = TLEVector[n].line1 + "\n" + TLEVector[n].line2; 
+        satMobility->SetTleInfo(formatted_TLE);
+        // Set the simulation startdate
+        satMobility->SetStartDate(TLEAge);
+
+        satellites.Get(n)->AggregateObject(satMobility);
+
+        // Give each satellite a name equal to the one specified in the TLE data
+        Names::Add(TLEVector[n].name, satellites.Get(n));
+    }
+    NS_LOG_INFO("[+] SatSGP4 Mobilty installed on satellites");
+
+
+    for (size_t n = 0; n < 2; ++n) {
+        // Ptr<Node> gs  = groundStations.Get(n);
+    }
+
+    exit(0);
+    // ==============================================================================================
+    
+
+
+    
+    // PointToPointHelper pointToPoint;
+    // pointToPoint.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
+    // pointToPoint.SetChannelAttribute("Delay", StringValue("2ms"));
+
+    // NetDeviceContainer devices;
+    // devices = pointToPoint.Install(nodes);
+
+    // InternetStackHelper stack;
+    // stack.Install(nodes);
+
+    // Ipv4AddressHelper address;
+    // address.SetBase("10.1.1.0", "255.255.255.0");
+    // Ipv4InterfaceContainer interfaces = address.Assign(devices);
 
     Simulator::Run();
     Simulator::Destroy();

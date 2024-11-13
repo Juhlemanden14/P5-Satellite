@@ -9,10 +9,16 @@ void TrimTrailingSpaces(std::string &str) {
 }
 
 // Function to read TLE file and format data into compatible string format
-std::vector<TLE> ReadTLEFile(const std::string &filename) {
+std::vector<TLE> ReadTLEFile(const std::string &filename, std::string &TLEAge) {
     std::ifstream file(filename);
     std::vector<TLE> tleData;
     std::string line;
+
+    // Get TLE data entry
+    std::getline(file, TLEAge);
+    TrimTrailingSpaces(TLEAge);
+    
+
     
     while (std::getline(file, line)) {  // loop over all lines
         TLE tleEntry;
