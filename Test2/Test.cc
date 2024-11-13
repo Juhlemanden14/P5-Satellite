@@ -8,6 +8,8 @@
 #include "ns3/netanim-module.h"
 #include "ns3/mobility-module.h"
 
+#include "lib.h"
+
 // Add the ns3 namespaces so we do not have to write ns3:: in front of every method call.
 using namespace ns3;
 
@@ -140,6 +142,8 @@ int main(int argc, char* argv[]) {
 
     // NodeContainer dummyNodes = NodeContainer(4);
     // anim.SetConstantPosition(nodes.Get(0), 1, 1);
+    int number1 = 1231;
+    NS_LOG( LOG_DEBUG, "test: " << testFunction(number1));
 
 
     // Scale to 360/2048 (360 degrees for 2048 pixels)
