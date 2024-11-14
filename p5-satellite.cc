@@ -126,6 +126,10 @@ int main(int argc, char* argv[]) {
         Ptr<SatConstantPositionMobilityModel> GSMobility = CreateObject<SatConstantPositionMobilityModel>();
         GSMobility->SetGeoPosition(groundStationsCoordinates[n]);
         groundStationsMobilityModels.emplace_back(GSMobility);
+
+        // Give each ground station a constant position model, and set the location from the satellite mobility model!
+        GeoCoordinate gsNpos = groundStationsMobilityModels[n]->GetGeoPosition();
+        AnimationInterface::SetConstantPosition(groundStations.Get(n), gsNpos.GetLongitude(), -gsNpos.GetLatitude());
     }
     NS_LOG_DEBUG("[+] SatConstantPositionMobilityModel installed on " << groundStations.GetN() << " ground stations");
 
@@ -139,17 +143,11 @@ int main(int argc, char* argv[]) {
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
-    // Give each ground station a constant position model, and set the location from the satellite mobility model!
-    for (uint32_t n = 0; n < groundStations.GetN(); n++) {
-        GeoCoordinate gsNpos = groundStationsMobilityModels[n]->GetGeoPosition();
-        AnimationInterface::SetConstantPosition(groundStations.Get(n), gsNpos.GetLongitude(), -gsNpos.GetLatitude());
-    }
-
     // Run simulationphase at time 0
     simulationPhase(satellites, satelliteMobilityModels, groundStationsMobilityModels);
     // Run simulation phase at i intervals
-    int interval = 60*1;
-    for (int i = 1; i < 200; ++i) {
+    int interval = 60*0.1;
+    for (int i = 1; i < 2000; ++i) {
         Time t = Seconds(i * interval);
         Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
     }
@@ -159,7 +157,10 @@ int main(int argc, char* argv[]) {
     AnimationInterface anim("p5-satellite.xml");
     // anim.EnablePacketMetadata();
     anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
-
+    for (uint32_t n = 0; n < satellites.GetN(); n++){
+        anim.UpdateNodeDescription(n, TLEVector[n].name);
+        anim.UpdateNodeSize(n, 5, 5);
+    }
     // ==================================================================================================================
 
 
