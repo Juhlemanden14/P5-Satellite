@@ -3,6 +3,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/netanim-module.h"
 // #include "ns3/satellite-module.h"
 
 #include "tle-handler.h"
@@ -50,7 +51,7 @@ int main(int argc, char* argv[]) {
     NodeContainer groundStations(2);
     std::vector<GeoCoordinate> GSCoordinates;
     GSCoordinates.emplace_back(GeoCoordinate(57.0311, 9.5504, 0));
-    GSCoordinates.emplace_back(GeoCoordinate(60, 9, 0));
+    GSCoordinates.emplace_back(GeoCoordinate(52.4405, 16.3008, 0));
 
     NS_LOG_INFO("[+] " << satelliteCount << " satellite nodes have been created");
 
@@ -74,35 +75,43 @@ int main(int argc, char* argv[]) {
 
         // Give each satellite a name equal to the one specified in the TLE data
         Names::Add(TLEVector[n].name, satellites.Get(n));
-
-        Ptr<Node> t = Names::Find<Node>(TLEVector[n].name);
-        NS_LOG_DEBUG(TLEVector[n].name << " coords " << t->GetObject<SatMobilityModel>()->GetGeoPosition());
     }
-    NS_LOG_INFO("[+] SatSGP4 Mobilty installed on satellites");
+    // Testing purposes
+    Ptr<Node> t = Names::Find<Node>(TLEVector[1].name);
+    NS_LOG_DEBUG(TLEVector[1].name << " coords " << t->GetObject<SatMobilityModel>()->GetGeoPosition());
+    NS_LOG_INFO("[+] SatSGP4 Mobilty installed on " << satellites.GetN() << " satellites");
 
-    
-    // double distance = satellites.Get(2)->GetObject<SatMobilityModel>()->GetDistanceFrom(satellites.Get(6)->GetObject<SatMobilityModel>());
-    // NS_LOG_DEBUG("Distance between satellite 0 and 1 is -> " << distance/1000 << " km");
 
-
-    for (size_t n = 0; n < 2; ++n) {
-        Ptr<Node> gs  = groundStations.Get(n);
-
+    for (size_t n = 0; n < GSCoordinates.size(); ++n) {
+        Ptr<Node> gs = groundStations.Get(n);
         // make a similar mobility model for GS's even though they don't move. It just allows use of methods like .GetDistanceFrom(GS) etc.
         Ptr<SatConstantPositionMobilityModel> GSMobility = CreateObject<SatConstantPositionMobilityModel>();
-;
         GSMobility->SetGeoPosition(GSCoordinates[n]);
-    
-        NS_LOG_DEBUG("GS-0 coords " << GSMobility->GetGeoPosition());
-
-
-        double gs_sat_dist = GSMobility->GetDistanceFrom(satellites.Get(1)->GetObject<SatMobilityModel>());
-        NS_LOG_DEBUG("Distance between GS 0 and sat 0 is -> " << gs_sat_dist/1000 << " km");
-
-        
+        gs->AggregateObject(GSMobility);
     }
-    exit(0);
+    NS_LOG_DEBUG("[+] SatConstantPositionMobilityModel installed on " << groundStations.GetN() << " ground stations");
+    // Testing purposes
+    NS_LOG_DEBUG("GS-0 coords " << groundStations.Get(1)->GetObject<SatMobilityModel>()->GetGeoPosition());
+    double gs_sat_dist = groundStations.Get(1)->GetObject<SatMobilityModel>()->GetDistanceFrom(satellites.Get(1)->GetObject<SatMobilityModel>());
+    NS_LOG_DEBUG("Distance between GS 0 and sat 0 is -> " << gs_sat_dist/1000 << " km");
     // ==============================================================================================
+
+
+
+
+    // ========================================= Setup of NetAnimator mobility =========================================
+    AnimationInterface anim("p5-satellite.xml");
+    // anim.EnablePacketMetadata();
+    anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
+    
+
+
+    // ==================================================================================================================
+    exit(0);
+
+
+
+
 
     // PointToPointHelper pointToPoint;
     // pointToPoint.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
