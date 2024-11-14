@@ -28,16 +28,15 @@ NS_LOG_COMPONENT_DEFINE("P5-Satellite");
 
 // Function to be scheduled periodically in the ns3 simulator.
 void simulationPhase(NodeContainer &satellites, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels) {
-    NS_LOG_DEBUG("[->] Simulation phase:");
+    NS_LOG_DEBUG("[->] Simulation at second " << Simulator::Now().GetSeconds());    // Gets the elapsed seconds in the simulation
 
     // Set the new positions of the satellites and update their position in Net Animator.
     for (uint32_t n = 0; n < satellites.GetN(); ++n) {
-
         GeoCoordinate satPos = satelliteMobilityModels[n]->GetGeoPosition();
         AnimationInterface::SetConstantPosition(satellites.Get(n), satPos.GetLongitude(), -satPos.GetLatitude());
+
+        NS_LOG_DEBUG(satPos);
     }
-    // Gets the time in the simulation
-    NS_LOG_DEBUG(Simulator::Now().GetSeconds() << " seconds have elapsed");
 }
 
 
@@ -114,7 +113,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Testing purposes
-    int lookupIndex = 1;
+    int lookupIndex = 0;
     Ptr<Node> t = Names::Find<Node>(TLEVector[lookupIndex].name);
     NS_LOG_DEBUG(TLEVector[lookupIndex].name << " coords " << satelliteMobilityModels[lookupIndex]->GetGeoPosition());
     NS_LOG_INFO("[+] SatSGP4 Mobilty installed on " << satellites.GetN() << " satellites");
@@ -135,32 +134,38 @@ int main(int argc, char* argv[]) {
 
     // Testing purposes
     NS_LOG_DEBUG("GS-0 coords " << groundStationsMobilityModels[0]->GetGeoPosition());
-    double gs_sat_dist = groundStationsMobilityModels[0]->GetDistanceFrom(satelliteMobilityModels[1]);
+    double gs_sat_dist = groundStationsMobilityModels[0]->GetDistanceFrom(satelliteMobilityModels[lookupIndex]);
     NS_LOG_DEBUG("Distance between GS 0 and sat 1 is -> " << gs_sat_dist/1000 << " km");
     // ==============================================================================================
 
 
 
 
-    // ========================================= Setup of NetAnimator mobility =========================================
+    
     // Run simulationphase at time 0
     simulationPhase(satellites, satelliteMobilityModels, groundStationsMobilityModels);
     // Run simulation phase at i intervals
-    int interval = 60*0.1;
-    for (int i = 1; i < 2000; ++i) {
+    int interval = 60*1;
+    for (int i = 1; i < 200; ++i) {
         Time t = Seconds(i * interval);
         Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
     }
-    
 
-
+    // ========================================= Setup of NetAnimator mobility =========================================
     AnimationInterface anim("p5-satellite.xml");
     // anim.EnablePacketMetadata();
     anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
+    // Pretty Satellites :)
     for (uint32_t n = 0; n < satellites.GetN(); n++){
-        anim.UpdateNodeDescription(n, TLEVector[n].name);
+        anim.UpdateNodeDescription(n, TLEVector[n].name.substr(TLEVector[n].name.size() - 4,  4));  // Only works for starlink
         anim.UpdateNodeSize(n, 5, 5);
     }
+    // Pretty Ground stations
+    for (uint32_t n = 0; n < groundStations.GetN(); n++){
+        anim.UpdateNodeColor(groundStations.Get(n), 0, 255, 255);
+        anim.UpdateNodeSize(groundStations.Get(n), 3, 3);
+    }
+
     // ==================================================================================================================
 
 
