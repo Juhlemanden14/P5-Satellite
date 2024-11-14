@@ -1,6 +1,6 @@
 # P5-Satellite
 
-### Installing sns-3 properly [07-11-2024]
+### Installing sns-3 properly [14-11-2024]
 Download ns3.40
 ```
 $ wget https://www.nsnam.org/releases/ns-3-40/documentation
@@ -42,6 +42,14 @@ After the build has finished run the tests
 ```
 $ ./test.py
 ```
+If the build fails it could be due to an incompatible gcc & g++ version. To downgrade one can use the following commands:
+```
+$ sudo apt install gcc-9 g++-9
+$ sudo update-alternatives --config gcc
+$ sudo update-alternatives --config g++
+```
+The alternatives tab gives you the option to try and install different version of the compilers. Different versions are available for different OS-versions and you might need to try a few. 
+Ensure that you also clean your NS-3 build with every version you try.
 
 ### Updating CMakeLists.txt to handle subdirectories
 Make sure that you update your `scratch/CMakeLists.txt` file to be the one from `ns-3.40`, else ns-3 will not build the files as they are a subdirectory too deep.  
