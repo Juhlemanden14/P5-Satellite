@@ -12,6 +12,35 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("P5-Satellite");
 
+// // Function to schedule a position update. If verbose is set to true, it prints the new position
+// void SchedulePositionUpdate(Ptr<SatSGP4MobilityModel> satMobility, Time t, bool verbose) {
+//     Simulator::Schedule(t, [satMobility, t, verbose](){
+//         // Retrieve the satellite's position at this time
+//         GeoCoordinate pos = satMobility->GetGeoPosition();
+//         if (verbose) {
+//             std::cout << "Time: " << t.GetSeconds() << " sec, Position: ("
+//                       << pos.GetLongitude() << ", " << pos.GetLatitude() << ", "
+//                       << pos.GetAltitude() << ")" << std::endl;
+//         }
+//     });
+// }
+
+
+// Function to be scheduled periodically in the ns3 simulator.
+void simulationPhase(NodeContainer &satellites, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels) {
+    NS_LOG_DEBUG("[->] Simulation phase:");
+
+    // Set the new positions of the satellites and update their position in Net Animator.
+    for (uint32_t n = 0; n < satellites.GetN(); ++n) {
+
+        GeoCoordinate satPos = satelliteMobilityModels[n]->GetGeoPosition();
+        AnimationInterface::SetConstantPosition(satellites.Get(n), satPos.GetLongitude(), -satPos.GetLatitude());
+    }
+    // Gets the time in the simulation
+    NS_LOG_DEBUG(Simulator::Now().GetSeconds() << " seconds have elapsed");
+}
+
+
 
 int main(int argc, char* argv[]) {
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
@@ -110,23 +139,27 @@ int main(int argc, char* argv[]) {
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
+    // Give each ground station a constant position model, and set the location from the satellite mobility model!
+    for (uint32_t n = 0; n < groundStations.GetN(); n++) {
+        GeoCoordinate gsNpos = groundStationsMobilityModels[n]->GetGeoPosition();
+        AnimationInterface::SetConstantPosition(groundStations.Get(n), gsNpos.GetLongitude(), -gsNpos.GetLatitude());
+    }
 
-    // try to set a specific satellite at some place on the map using the seperated satellite mobility models
-    GeoCoordinate sat0pos = satelliteMobilityModels[0]->GetGeoPosition();
-    AnimationInterface::SetConstantPosition(satellites.Get(0), sat0pos.GetLongitude(), -sat0pos.GetLatitude());
-
-    GeoCoordinate sat1pos = satelliteMobilityModels[1]->GetGeoPosition();
-    AnimationInterface::SetConstantPosition(satellites.Get(1), sat1pos.GetLongitude(), -sat1pos.GetLatitude());
-
-    GeoCoordinate gs0pos = groundStationsMobilityModels[0]->GetGeoPosition();
-    AnimationInterface::SetConstantPosition(groundStations.Get(0), gs0pos.GetLongitude(), -gs0pos.GetLatitude());
+    // Run simulationphase at time 0
+    simulationPhase(satellites, satelliteMobilityModels, groundStationsMobilityModels);
+    // Run simulation phase at i intervals
+    int interval = 60*1;
+    for (int i = 1; i < 200; ++i) {
+        Time t = Seconds(i * interval);
+        Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
+    }
     
-    GeoCoordinate gs1pos = groundStationsMobilityModels[1]->GetGeoPosition();
-    AnimationInterface::SetConstantPosition(groundStations.Get(1), gs1pos.GetLongitude(), -gs1pos.GetLatitude());
-    
+
+
     AnimationInterface anim("p5-satellite.xml");
     // anim.EnablePacketMetadata();
     anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
+
     // ==================================================================================================================
 
 
