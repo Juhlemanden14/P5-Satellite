@@ -127,12 +127,7 @@ int main(int argc, char* argv[]) {
     AnimationInterface anim("p5-satellite.xml");
     // anim.EnablePacketMetadata();
     anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
-
     // ==================================================================================================================
-    exit(0);
-
-
-
 
 
     // PointToPointHelper pointToPoint;
