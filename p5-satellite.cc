@@ -48,14 +48,14 @@ int main(int argc, char* argv[]) {
     
     // ========================================= Node Setup =========================================
     NodeContainer satellites(satelliteCount);
-    std::vector<Ptr<SatSGP4MobilityModel>> satMobModels;
+    std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
 
     NodeContainer groundStations(2);
-    std::vector<Ptr<SatConstantPositionMobilityModel>> GSMobModels;
-    std::vector<GeoCoordinate> GSCoordinates;
+    std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
+    std::vector<GeoCoordinate> groundStationsCoordinates;
 
-    GSCoordinates.emplace_back(GeoCoordinate(57.0311, 9.5504, 0));
-    GSCoordinates.emplace_back(GeoCoordinate(52.4405, 16.3008, 0));
+    groundStationsCoordinates.emplace_back(GeoCoordinate(57.0311, 9.5504, 0));
+    groundStationsCoordinates.emplace_back(GeoCoordinate(52.4405, 16.3008, 0));
 
     NS_LOG_INFO("[+] " << satelliteCount << " satellite nodes have been created");
 
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
 
         // satellites.Get(n)->AggregateObject(satMobility);
         // keep nodes and mobility models seperated - works better with netanimator later on this way.
-        satMobModels.emplace_back(satMobility);
+        satelliteMobilityModels.emplace_back(satMobility);
 
         // Give each satellite a name equal to the one specified in the TLE data
         Names::Add(TLEVector[n].name, satellites.Get(n));
@@ -87,22 +87,22 @@ int main(int argc, char* argv[]) {
     // Testing purposes
     int lookupIndex = 1;
     Ptr<Node> t = Names::Find<Node>(TLEVector[lookupIndex].name);
-    NS_LOG_DEBUG(TLEVector[lookupIndex].name << " coords " << satMobModels[lookupIndex]->GetGeoPosition());
+    NS_LOG_DEBUG(TLEVector[lookupIndex].name << " coords " << satelliteMobilityModels[lookupIndex]->GetGeoPosition());
     NS_LOG_INFO("[+] SatSGP4 Mobilty installed on " << satellites.GetN() << " satellites");
 
 
-    for (size_t n = 0; n < GSCoordinates.size(); ++n) {
+    for (size_t n = 0; n < groundStationsCoordinates.size(); ++n) {
         Ptr<Node> gs = groundStations.Get(n);
         // make a similar mobility model for GS's even though they don't move. It just allows use of methods like .GetDistanceFrom(GS) etc.
         Ptr<SatConstantPositionMobilityModel> GSMobility = CreateObject<SatConstantPositionMobilityModel>();
-        GSMobility->SetGeoPosition(GSCoordinates[n]);
-        GSMobModels.emplace_back(GSMobility);
+        GSMobility->SetGeoPosition(groundStationsCoordinates[n]);
+        groundStationsMobilityModels.emplace_back(GSMobility);
     }
     NS_LOG_DEBUG("[+] SatConstantPositionMobilityModel installed on " << groundStations.GetN() << " ground stations");
 
     // Testing purposes
-    NS_LOG_DEBUG("GS-0 coords " << GSMobModels[0]->GetGeoPosition());
-    double gs_sat_dist = GSMobModels[0]->GetDistanceFrom(satMobModels[1]);
+    NS_LOG_DEBUG("GS-0 coords " << groundStationsMobilityModels[0]->GetGeoPosition());
+    double gs_sat_dist = groundStationsMobilityModels[0]->GetDistanceFrom(satelliteMobilityModels[1]);
     NS_LOG_DEBUG("Distance between GS 0 and sat 1 is -> " << gs_sat_dist/1000 << " km");
     // ==============================================================================================
 
@@ -112,16 +112,16 @@ int main(int argc, char* argv[]) {
     // ========================================= Setup of NetAnimator mobility =========================================
 
     // try to set a specific satellite at some place on the map using the seperated satellite mobility models
-    GeoCoordinate sat0pos = satMobModels[0]->GetGeoPosition();
+    GeoCoordinate sat0pos = satelliteMobilityModels[0]->GetGeoPosition();
     AnimationInterface::SetConstantPosition(satellites.Get(0), sat0pos.GetLongitude(), -sat0pos.GetLatitude());
 
-    GeoCoordinate sat1pos = satMobModels[1]->GetGeoPosition();
+    GeoCoordinate sat1pos = satelliteMobilityModels[1]->GetGeoPosition();
     AnimationInterface::SetConstantPosition(satellites.Get(1), sat1pos.GetLongitude(), -sat1pos.GetLatitude());
 
-    GeoCoordinate gs0pos = GSMobModels[0]->GetGeoPosition();
+    GeoCoordinate gs0pos = groundStationsMobilityModels[0]->GetGeoPosition();
     AnimationInterface::SetConstantPosition(groundStations.Get(0), gs0pos.GetLongitude(), -gs0pos.GetLatitude());
     
-    GeoCoordinate gs1pos = GSMobModels[1]->GetGeoPosition();
+    GeoCoordinate gs1pos = groundStationsMobilityModels[1]->GetGeoPosition();
     AnimationInterface::SetConstantPosition(groundStations.Get(1), gs1pos.GetLongitude(), -gs1pos.GetLatitude());
     
     AnimationInterface anim("p5-satellite.xml");
