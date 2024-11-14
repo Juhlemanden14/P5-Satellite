@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
     
     // ========================================= Setup default commandline parameters  =========================================
     std::string tleDataPath = "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_tle_data.txt";
-    int satelliteCount = 0;
+    int satelliteCount = 2;
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
@@ -48,6 +48,10 @@ int main(int argc, char* argv[]) {
     // ========================================= Node Setup =========================================
     NodeContainer satellites(satelliteCount);
     NodeContainer groundStations(2);
+    std::vector<GeoCoordinate> GSCoordinates;
+    GSCoordinates.emplace_back(GeoCoordinate(57.0311, 9.5504, 0));
+    GSCoordinates.emplace_back(GeoCoordinate(60, 9, 0));
+
     NS_LOG_INFO("[+] " << satelliteCount << " satellite nodes have been created");
 
     // Install the internet stack on the satellites and the ground stations.
@@ -77,12 +81,25 @@ int main(int argc, char* argv[]) {
     NS_LOG_INFO("[+] SatSGP4 Mobilty installed on satellites");
 
     
-    double distance = satellites.Get(2)->GetObject<SatMobilityModel>()->GetDistanceFrom(satellites.Get(6)->GetObject<SatMobilityModel>());
-    NS_LOG_DEBUG("Distance between satellite 0 and 1 is -> " << distance/1000 << " km");
+    // double distance = satellites.Get(2)->GetObject<SatMobilityModel>()->GetDistanceFrom(satellites.Get(6)->GetObject<SatMobilityModel>());
+    // NS_LOG_DEBUG("Distance between satellite 0 and 1 is -> " << distance/1000 << " km");
 
 
     for (size_t n = 0; n < 2; ++n) {
-        // Ptr<Node> gs  = groundStations.Get(n);
+        Ptr<Node> gs  = groundStations.Get(n);
+
+        // make a similar mobility model for GS's even though they don't move. It just allows use of methods like .GetDistanceFrom(GS) etc.
+        Ptr<SatConstantPositionMobilityModel> GSMobility = CreateObject<SatConstantPositionMobilityModel>();
+;
+        GSMobility->SetGeoPosition(GSCoordinates[n]);
+    
+        NS_LOG_DEBUG("GS-0 coords " << GSMobility->GetGeoPosition());
+
+
+        double gs_sat_dist = GSMobility->GetDistanceFrom(satellites.Get(1)->GetObject<SatMobilityModel>());
+        NS_LOG_DEBUG("Distance between GS 0 and sat 0 is -> " << gs_sat_dist/1000 << " km");
+
+        
     }
     exit(0);
     // ==============================================================================================
