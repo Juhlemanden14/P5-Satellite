@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
 
 
     // Scale to 360/2048 (360 degrees for 2048 pixels)
-    anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-bw.jpeg", -180, -90, 0.17578125, 0.17578125, 1);
+    anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
 
     // Generate .pcap files from each node.
     csma.EnablePcapAll("test-1", true);
