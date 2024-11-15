@@ -6,7 +6,8 @@
 #include "ns3/netanim-module.h"
 // #include "ns3/satellite-module.h"
 
-#include "tle-handler.h"
+#include "tleHandler.h"
+#include "constellationHandler.h"
 
 using namespace ns3;
 
@@ -41,7 +42,6 @@ void simulationPhase(NodeContainer &satellites, std::vector<Ptr<SatSGP4MobilityM
 }
 
 
-
 int main(int argc, char* argv[]) {
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
     Time::SetResolution(Time::NS);
@@ -58,60 +58,19 @@ int main(int argc, char* argv[]) {
     // ==========================================================================================================================
 
 
-    
+    // ========================================= TLE handling and node Setup =========================================
+    std::vector<TLE> TLEVector;
 
-    // ========================================= Import TLE data =========================================
-    std::string TLEAge;
-    std::vector<TLE> TLEVector = ReadTLEFile(tleDataPath, TLEAge);
-    NS_LOG_INFO("[+] Imported TLE data for " << TLEVector.size() << " satellites, with age " << TLEAge);
-    NS_ASSERT_MSG(TLEVector.size() != 0, "No satellites were imported?");
-
-    // If no amount of sallites are specified, set equal to the amount of satellites in the TLE data
-    if (satelliteCount == 0) {
-        satelliteCount = TLEVector.size();
-    }
-    // =================================================================================================== 
-    
-
-
-    
-    // ========================================= Node Setup =========================================
-    NodeContainer satellites(satelliteCount);
     std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
-
-    NodeContainer groundStations(2);
+    NodeContainer satellites = createSatellitesFromTLE(satelliteCount, satelliteMobilityModels, tleDataPath, TLEVector);
+    
     std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
     std::vector<GeoCoordinate> groundStationsCoordinates;
-
+  
     groundStationsCoordinates.emplace_back(GeoCoordinate(57.0311, 9.5504, 0));
     groundStationsCoordinates.emplace_back(GeoCoordinate(52.4405, 16.3008, 0));
 
-    NS_LOG_INFO("[+] " << satelliteCount << " satellite nodes have been created");
-
-    // Install the internet stack on the satellites and the ground stations.
-    InternetStackHelper stackHelper;
-    stackHelper.Install(satellites);
-    stackHelper.Install(groundStations);
-    NS_LOG_INFO("[+] Internet stack installed");
-    
-    // Create and aggregate the Satellite SGP4 mobility model to each satellite
-    std::string formatted_TLE;
-    for (int n = 0; n < satelliteCount; ++n) {
-        Ptr<SatSGP4MobilityModel> satMobility = CreateObject<SatSGP4MobilityModel>();
-        
-        // Format the two lines into a single string for NS-3 compatibility - IT MUST BE line1\nline2 WITH NO SPACES!!!
-        formatted_TLE = TLEVector[n].line1 + "\n" + TLEVector[n].line2; 
-        satMobility->SetTleInfo(formatted_TLE);
-        // Set the simulation absolute start time in string format.
-        satMobility->SetStartDate(TLEAge);
-
-        // satellites.Get(n)->AggregateObject(satMobility);
-        // keep nodes and mobility models seperated - works better with netanimator later on this way.
-        satelliteMobilityModels.emplace_back(satMobility);
-
-        // Give each satellite a name equal to the one specified in the TLE data
-        Names::Add(TLEVector[n].name, satellites.Get(n));
-    }
+    NodeContainer groundStations = createGroundStations(2, groundStationsMobilityModels, groundStationsCoordinates);
 
     // Testing purposes
     int lookupIndex = 1;
@@ -119,23 +78,11 @@ int main(int argc, char* argv[]) {
     NS_LOG_DEBUG(TLEVector[lookupIndex].name << " coords " << satelliteMobilityModels[lookupIndex]->GetGeoPosition());
     NS_LOG_INFO("[+] SatSGP4 Mobilty installed on " << satellites.GetN() << " satellites");
 
-
-    for (size_t n = 0; n < groundStationsCoordinates.size(); ++n) {
-        Ptr<Node> gs = groundStations.Get(n);
-        // make a similar mobility model for GS's even though they don't move. It just allows use of methods like .GetDistanceFrom(GS) etc.
-        Ptr<SatConstantPositionMobilityModel> GSMobility = CreateObject<SatConstantPositionMobilityModel>();
-        GSMobility->SetGeoPosition(groundStationsCoordinates[n]);
-        groundStationsMobilityModels.emplace_back(GSMobility);
-    }
-    NS_LOG_DEBUG("[+] SatConstantPositionMobilityModel installed on " << groundStations.GetN() << " ground stations");
-
     // Testing purposes
     NS_LOG_DEBUG("GS-0 coords " << groundStationsMobilityModels[0]->GetGeoPosition());
     double gs_sat_dist = groundStationsMobilityModels[0]->GetDistanceFrom(satelliteMobilityModels[1]);
     NS_LOG_DEBUG("Distance between GS 0 and sat 1 is -> " << gs_sat_dist/1000 << " km");
-    // ==============================================================================================
-
-
+    // ===============================================================================================================
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
@@ -153,7 +100,6 @@ int main(int argc, char* argv[]) {
         Time t = Seconds(i * interval);
         Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
     }
-    
 
 
     AnimationInterface anim("p5-satellite.xml");
