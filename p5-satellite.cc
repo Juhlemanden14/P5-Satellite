@@ -13,6 +13,10 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("P5-Satellite");
 
+// Call in directory: 
+// $ cd ns-3.42 
+// $ ./../netanim-3.109/NetAnim
+
 // // Function to schedule a position update. If verbose is set to true, it prints the new position
 // void SchedulePositionUpdate(Ptr<SatSGP4MobilityModel> satMobility, Time t, bool verbose) {
 //     Simulator::Schedule(t, [satMobility, t, verbose](){
@@ -36,7 +40,7 @@ void simulationPhase(NodeContainer &satellites, std::vector<Ptr<SatSGP4MobilityM
         GeoCoordinate satPos = satelliteMobilityModels[n]->GetGeoPosition();
         AnimationInterface::SetConstantPosition(satellites.Get(n), satPos.GetLongitude(), -satPos.GetLatitude());
 
-        NS_LOG_DEBUG(satPos);
+        //NS_LOG_DEBUG(satPos);
     }
 }
 
@@ -66,8 +70,12 @@ int main(int argc, char* argv[]) {
     std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
     std::vector<GeoCoordinate> groundStationsCoordinates;
   
-    groundStationsCoordinates.emplace_back(GeoCoordinate(57.0311, 9.5504, 0));
-    groundStationsCoordinates.emplace_back(GeoCoordinate(52.4405, 16.3008, 0));
+
+    // -25.8872, 27.7077, 1540 -- Hartebeesthoek, South Africa
+    groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
+
+    // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
+    groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
 
     NodeContainer groundStations = createGroundStations(2, groundStationsMobilityModels, groundStationsCoordinates);
 
@@ -94,16 +102,17 @@ int main(int argc, char* argv[]) {
     // Run simulationphase at time 0
     simulationPhase(satellites, satelliteMobilityModels, groundStationsMobilityModels);
     // Run simulation phase at i intervals
-    int interval = 60*1;
+    int interval = 60*0.1;
     for (int i = 1; i < 200; ++i) {
         Time t = Seconds(i * interval);
         Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
     }
 
 
-    AnimationInterface anim("p5-satellite.xml");
+    AnimationInterface anim("scratch/P5-Satellite/p5-satellite.xml");
     // anim.EnablePacketMetadata();
-    anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
+
+    anim.SetBackgroundImage("resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
     // Pretty Satellites :)
     for (uint32_t n = 0; n < satellites.GetN(); n++){
         anim.UpdateNodeDescription(n, TLEVector[n].name.substr(TLEVector[n].name.size() - 4,  4));  // Only works for starlink
@@ -114,6 +123,9 @@ int main(int argc, char* argv[]) {
         anim.UpdateNodeColor(groundStations.Get(n), 0, 255, 255);
         anim.UpdateNodeSize(groundStations.Get(n), 3, 3);
     }
+    anim.UpdateNodeDescription(groundStations.Get(0), "Hartebeesthoek");
+    anim.UpdateNodeDescription(groundStations.Get(1), "Tea Gardens");
+
 
     // ==================================================================================================================
 
