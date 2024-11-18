@@ -70,12 +70,66 @@ NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatCo
         Ptr<SatConstantPositionMobilityModel> GSMobility = CreateObject<SatConstantPositionMobilityModel>();
         GSMobility->SetGeoPosition(groundStationsCoordinates[n]);
         groundStationsMobilityModels.emplace_back(GSMobility);
+
+        CsmaHelper csma;
+        NetDeviceContainer deviceContainer = csma.Install(groundStations.Get(n));
+        /*
+        deviceContainer.Get(0)->
+        
+        Ptr<CsmaChannel> csmaChannel = DynamicCast<CsmaChannel>(groundStations.Get(n)->GetDevice(0)->GetChannel());
+        csmaChannel->Detach(0);
+        Ptr<CsmaNetDevice> csmaDevice = DynamicCast<CsmaNetDevice>(deviceContainer.Get(0));
+        */
     }
     NS_LOG_DEBUG("[+] SatConstantPositionMobilityModel installed on " << groundStations.GetN() << " ground stations");
 
     return groundStations;
 }
 
-void createInterSatelliteLinks() {
+/*
+void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, NodeContainer &groundStations, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, NodeContainer &satellites) {
     
+    if (checkGSLink() == false) {
+        Do stuff to get new link:
+        SearchNewLink(max_dist, someOtherParams) -> new_link
+        Establish link
+    }
+    else {
+        do nothing
+    }
+}
+*/
+
+bool checkGSLink(int gsIndex, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, NodeContainer &groundStations, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, NodeContainer &satellites, double maxDistanceKM = 3000) {
+    
+    Ptr<NetDevice> gsNetDevice = groundStations.Get(gsIndex)->GetDevice(0);
+    int attachedChannelNetDevices = groundStations.Get(gsIndex)->GetDevice(0)->GetChannel()->GetNDevices();
+
+    if (attachedChannelNetDevices != 2) {
+        return false;
+    }
+
+    for (int devices = 0; devices < attachedChannelNetDevices; ++devices) {
+
+        Ptr<NetDevice> attachedChannelDevice = groundStations.Get(gsIndex)->GetDevice(0)->GetChannel()->GetDevice(devices);
+
+        // Check if the first netdevice of the channel is the satellite one.
+        if (gsNetDevice != attachedChannelDevice) { // If we enter we know that the 'attachedChannelDevice' is a satellite device.
+            
+            // Get the satellite index id, as it is created before the ground stations, we can use its id.
+            int satId = attachedChannelDevice->GetNode()->GetId();
+            
+            // Check distance between the satellite and the ground station
+            double gsSatDist = groundStationsMobilityModels[gsIndex]->GetDistanceFrom(satelliteMobilityModels[satId]);
+            if ( (gsSatDist/1000) < maxDistanceKM) {
+                // Distance to satellite is in reach to keep the link.
+                return true;
+            } else {
+                // Distance to satellite is too great to keep the connection.
+                return false;
+            }
+        }
+    }
+
+    return false;
 }

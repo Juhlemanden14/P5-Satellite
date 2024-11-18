@@ -18,4 +18,21 @@ NodeContainer createSatellitesFromTLE(int satelliteCount, std::vector<Ptr<SatSGP
 // Returns node container with all groundstations, passes groundStationsMobilityModels by reference.
 NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, std::vector<GeoCoordinate> groundStationsCoordinates);
 
+// ==================== Satellite specific functions ===================
+void updateInterSatelliteLinks();
+void checkImpossibleSatLinks();
+
+// ==================== Ground station speecific =======================
+void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
+                              NodeContainer &groundStations, 
+                              std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
+                              NodeContainer &satellites);
+
+bool checkGSLink(int gsIndex, 
+                 std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
+                 NodeContainer &groundStations, 
+                 std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
+                 NodeContainer &satellites, 
+                 double maxDistanceKM);
+
 #endif

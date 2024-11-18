@@ -12,10 +12,10 @@
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("P5-Satellite");
-
+// Correct Net Animator folder path from P5-Satellite: './../../../netanim-3.109/NetAnim'
 // Call in directory: 
 // $ cd ns-3.42 
-// $ ./../netanim-3.109/NetAnim
+
 
 // // Function to schedule a position update. If verbose is set to true, it prints the new position
 // void SchedulePositionUpdate(Ptr<SatSGP4MobilityModel> satMobility, Time t, bool verbose) {
@@ -66,10 +66,10 @@ int main(int argc, char* argv[]) {
 
     std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
     NodeContainer satellites = createSatellitesFromTLE(satelliteCount, satelliteMobilityModels, tleDataPath, TLEVector);
-    
+
     std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
     std::vector<GeoCoordinate> groundStationsCoordinates;
-  
+
 
     // -25.8872, 27.7077, 1540 -- Hartebeesthoek, South Africa
     groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
