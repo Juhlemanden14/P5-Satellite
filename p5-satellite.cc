@@ -108,10 +108,9 @@ int main(int argc, char* argv[]) {
         Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
     }
 
-
+    // Run NetAnim from the P5-Satellite folder
     AnimationInterface anim("scratch/P5-Satellite/p5-satellite.xml");
     // anim.EnablePacketMetadata();
-
     anim.SetBackgroundImage("resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
     // Pretty Satellites :)
     for (uint32_t n = 0; n < satellites.GetN(); n++){
