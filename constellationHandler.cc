@@ -76,3 +76,6 @@ NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatCo
     return groundStations;
 }
 
+void createInterSatelliteLinks() {
+    
+}
