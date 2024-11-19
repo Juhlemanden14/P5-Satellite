@@ -5,6 +5,7 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/netanim-module.h"
 // #include "ns3/satellite-module.h"
+#include "ns3/csma-module.h"    // needed for dynamic cast to csmaNetDevice
 
 #include "tleHandler.h"
 #include "constellationHandler.h"
