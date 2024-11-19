@@ -129,26 +129,37 @@ int main(int argc, char* argv[]) {
 
     // ----- Testing of TCP between GSs -----
     
-    // TCP Server receiving data
-    PacketSinkHelper sink("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), 7777));
-    ApplicationContainer serverApps = sink.Install(groundStations.Get(0));
-    serverApps.Start(Seconds(0));
-
-    NS_LOG_DEBUG("[E] IPV4 address: " << groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress());
+    // // TCP Server receiving data
+    // PacketSinkHelper sink("ns3::UdpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), 7777));
+    // ApplicationContainer serverApps = sink.Install(groundStations.Get(0));
+    // serverApps.Start(Seconds(0));
     
     // TCP Client
     NS_LOG_UNCOND("Server IP: " << groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress());
-    OnOffHelper onOffHelper("ns3::TcpSocketFactory", InetSocketAddress(groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777));
-    onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.5]"));
-    onOffHelper.SetAttribute("PacketSize", UintegerValue(512));
+    //OnOffHelper onOffHelper("ns3::TcpSocketFactory", InetSocketAddress(groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777));
+    //onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.5]"));
+    //onOffHelper.SetAttribute("PacketSize", UintegerValue(512));
     
-    ApplicationContainer clientApps = onOffHelper.Install(groundStations.Get(1));
+    //ApplicationContainer clientApps = onOffHelper.Install(groundStations.Get(1));
 
-    clientApps.Start(Seconds(0.1));
-    clientApps.Stop(Seconds(10));
+    UdpEchoServerHelper echoServer(7777);
+
+    ApplicationContainer serverApps = echoServer.Install(groundStations.Get(0));
+    serverApps.Start(Seconds(0.0));
+    serverApps.Stop(Seconds(15.0));
+
+    UdpEchoClientHelper echoClient(InetSocketAddress(groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777));
+    echoClient.SetAttribute("MaxPackets", UintegerValue(5));
+    echoClient.SetAttribute("Interval", TimeValue(Seconds(3.0)));
+    echoClient.SetAttribute("PacketSize", UintegerValue(1024));
+    ApplicationContainer clientApps = echoClient.Install(groundStations.Get(1));
+
+    clientApps.Start(Seconds(0.0));
+    clientApps.Stop(Seconds(15.0));
 
     // --------------------------------------
 
+    // ----- scheduling link break and link creation ------
     Simulator::Schedule(Seconds(5), [&groundStations, theBannedChannel](){
         Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
         for (size_t device = 0; device < chan->GetNDevices(); ++device) {
@@ -165,9 +176,24 @@ int main(int argc, char* argv[]) {
         NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
         NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
 
-        Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+        //Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     });
 
+    Simulator::Schedule(Seconds(7), [&groundStations](){
+        Ptr<CsmaChannel> testChannel = CreateObject<CsmaChannel>();
+        testChannel->SetAttribute("DataRate", StringValue("1MBps"));
+        double delayVal = 3000000.0 / 299792458.0;  // seconds
+        testChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
+        
+        DynamicCast<CsmaNetDevice>(groundStations.Get(0)->GetDevice(1))->Attach(testChannel);
+        DynamicCast<CsmaNetDevice>(groundStations.Get(1)->GetDevice(1))->Attach(testChannel);
+
+        groundStations.Get(0)->GetObject<Ipv4>()->SetUp(1);
+        groundStations.Get(1)->GetObject<Ipv4>()->SetUp(1);
+
+        // Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+    });
+    // ----------------------------------------------------
 
 
     // ===============================================================================================================
