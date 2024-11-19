@@ -56,14 +56,13 @@ def extract_satellites_by_inclination_range(tleDataPath, polar_limit=90, rosette
 
 
 if __name__ == "__main__":
-    write_file = False
-
     # ==================== Fetch, split and plot interesting points ====================
-    tleDataPath = "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_tle_data.txt"
+    tleDataPath =   "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_tle_data.txt"
+    outputPath =    "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_orbits.txt"
+
 
     with open(tleDataPath, 'r') as file:
         content = file.readlines()
-
     # Each satellite has 3 datapoints. And the file has 1 entry line containing the date
     satCount = int((len(content)-1) / 3)
 
@@ -81,7 +80,7 @@ if __name__ == "__main__":
         line2 = content[n+2]
 
         TLEs[name] = name + line1 + line2
-        names.append(name)
+        names.append(name.strip())
 
         np_index = int(n/3)
         Inclinations[np_index] = line2.split()[2]
@@ -90,89 +89,124 @@ if __name__ == "__main__":
         
         # For Skyfield
         tle_data.append((name, line1, line2))
-    # print(Inclinations)
-    # print(RAAN)
-    # print(MeanAnomaly)
+    print(f"Imported {len(names)} satellites from {tleDataPath}")
 
 
-    fig = plt.figure(figsize=(12, 6))
-    ax1 = fig.add_subplot(121, projection='3d')
+    fig = plt.figure(figsize=(22, 14))
+    ax1 = fig.add_subplot(221, projection='3d')
     ax1.scatter(RAAN, MeanAnomaly, Inclinations)
     ax1.set_xlabel("RAAN (degrees)")
     ax1.set_ylabel("MeanAnomaly (degrees)")
     ax1.set_zlabel("Inclination of orbit (degrees)")
     ax1.set_title("Scatterplot of satellites in the starlink constellation\nbased on RAAN and Orbit Inclination")
     # ==================================================================================
-    
 
 
     # =================== Find similar orbits and try to group TLEs based on it ===================
     # search for satellites with similar RAAN and Inclination
 
-    InclinationL = 80
-    InclinationH = 98
-    RAANL = 75   
-    RAANH = 81
-    MeanAnomalyL = 0
-    MeanAnomalyH = 360
-    orbit_names = []
 
-
-    Inclinations.sort()
-    print(Inclinations)
-    print(len(Inclinations), len(RAAN), len(MeanAnomaly))
-    mask = (Inclinations >= 80) & (Inclinations <= 98)
-    Inclinations = Inclinations[mask]
-    RAAN = RAAN[mask]
-    MeanAnomaly = MeanAnomaly[mask]
-    print(len(Inclinations), len(RAAN), len(MeanAnomaly))
-
-    # for n in range(len(Inclinations)):
-    #     if (Inclinations[n] > InclinationL) and (Inclinations[n] < InclinationH) and (RAAN[n] > RAANL) and (RAAN[n] < RAANH) and (MeanAnomaly[n] > MeanAnomalyL) and (MeanAnomaly[n] < MeanAnomalyH):
-    #         orbit_names.append(names[n])
-    # print(len(orbit_names))
-
-    ax2 = fig.add_subplot(122, projection='3d')
-    ax2.scatter(RAAN, MeanAnomaly, Inclinations)
+    # Polar ================================================================
+    print("[+] Polar")
+    polarMask = (98 >= Inclinations) & (Inclinations >= 80) & (25 >= RAAN)
+    tracker = np.arange(0, satCount)[polarMask]
+    polarNames = [names[i] for i in tracker]
+    ax2 = fig.add_subplot(222, projection='3d')
+    ax2.scatter(RAAN[polarMask], MeanAnomaly[polarMask], Inclinations[polarMask])
     ax2.set_xlabel("RAAN (degrees)")
     ax2.set_ylabel("MeanAnomaly (degrees)")
     ax2.set_zlabel("Inclination of orbit (degrees)")
-    ax2.set_title("Filtered version " + tleDataPath)
-    plt.tight_layout()
-    plt.show()
+    ax2.set_title("Polar orbits at 93 degrees")
+    print("Polar names", polarNames[:3])
 
 
-    # for name in orbit_names:
-        # print(TLEs[name])
+    # Rosette43 ================================================================
+    print("[+] Rosette43")
+    maskRosette43 = (43.5 >= Inclinations) & (Inclinations >= 42.5)
+    maskRosette43_X = []
+    maskRosette43_X.append(maskRosette43 & (4.2 >= RAAN))
+    maskRosette43_X.append(maskRosette43 & (80 >= RAAN) & (RAAN >= 75))
+    maskRosette43_X.append(maskRosette43 & (170 >= RAAN) & (RAAN >= 165))
+    maskRosette43_X.append(maskRosette43 & (250 >= RAAN) & (RAAN >= 240))
+    maskRosette43_X.append(maskRosette43 & (310 >= RAAN) & (RAAN >= 300))
+    tracker = np.arange(0, satCount)[maskRosette43]
+    
+    ax3 = fig.add_subplot(223, projection='3d')
+    namesRosette43_X = []
+    for m in maskRosette43_X:
+        ax3.scatter(RAAN[m], MeanAnomaly[m], Inclinations[m])
+        
+        tracker = np.arange(0, satCount)[m]
+        namesRosette43_X.append([names[i] for i in tracker])
 
-    if write_file:
-        new_orbit_file_path = f"scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_INC{round((InclinationH + InclinationL) / 2, 1)}_RAAN{round((RAANH + RAANL) / 2, 2)}.txt"
-
-        with open(new_orbit_file_path, "w") as new_file:
-            new_file.write(content[0])
-            for name in orbit_names:
-                new_file.write(TLEs[name])
+    print("Satellite count", [len(orbit) for orbit in namesRosette43_X])
+    ax3.set_xlabel("RAAN (degrees)")
+    ax3.set_ylabel("MeanAnomaly (degrees)")
+    ax3.set_zlabel("Inclination of orbit (degrees)")
+    ax3.set_title("Rosette orbits at 43 degrees")
 
 
 
+    # Rosette53 ================================================================
+    print("[+] Rosette53")
+    maskRosette53 = (53.5 >= Inclinations) & (Inclinations >= 53.2)   # Only take the Rosette53 orbits which have the lowest inclination
+    maskRosette53_X = []
+    maskRosette53_X.append(maskRosette53 & (20 >= RAAN) & (RAAN >= 10))
+    maskRosette53_X.append(maskRosette53 & (90 >= RAAN) & (RAAN >= 80))
+    maskRosette53_X.append(maskRosette53 & (190 >= RAAN) & (RAAN >= 180))
+    maskRosette53_X.append(maskRosette53 & (265 >= RAAN) & (RAAN >= 255))
+    maskRosette53_X.append(maskRosette53 & (325 >= RAAN) & (RAAN >= 315))
+
+    tracker = np.arange(0, satCount)[maskRosette53]
+    ax4 = fig.add_subplot(224, projection='3d')
+
+    namesRosette53_X = []
+    for m in maskRosette53_X:
+        ax4.scatter(RAAN[m], MeanAnomaly[m], Inclinations[m])
+
+        tracker = np.arange(0, satCount)[m]
+        namesRosette53_X.append([names[i] for i in tracker])    
+    ax4.set_xlabel("RAAN (degrees)")
+    ax4.set_ylabel("MeanAnomaly (degrees)")
+    ax4.set_zlabel("Inclination of orbit (degrees)")
+    ax4.set_title("Rosette orbits at 53 degrees")
+    print("Satellite count", [len(orbit) for orbit in namesRosette53_X])
 
 
+    
 
-
-    # Load the TLE data
+    # Sort orbits based on coordinates
     load = Loader('~/skyfield-data')  # Change to a suitable directory
     ts = load.timescale()
+
     satellites = [EarthSatellite(line1, line2, name, ts) for name, line1, line2 in tle_data]
+    
     # Compute latitude and longitude
     time = ts.now()
     latitudes = []
     longitudes = []
+    polarDic = {}
+    rosette43_XDic = [{} for _ in range(len(namesRosette43_X))]
 
     for satellite in satellites:
-        geocentric = satellite.at(time)
-        subpoint = geocentric.subpoint()
+        subpoint = satellite.at(time).subpoint()
         latitudes.append(subpoint.latitude.degrees)
         longitudes.append(subpoint.longitude.degrees)
+
+        if satellite.name in polarNames:
+            polarDic[satellite.name] = subpoint.latitude.degrees
+
+        for i, orbit in enumerate(namesRosette43_X):
+            if satellite.name in orbit:
+                rosette43_XDic[i][satellite.name] = subpoint.longitude.degrees
+    
+    # Sort the orbits based on their appending coordinates (lat/long)!
+    polarDic = dict(sorted(polarDic.items(), key=lambda item: item[1]))
+    # print(polarDic)
+    for d in rosette43_XDic:
+        rosette43_XDic[i] = dict(sorted(d.items(), key=lambda item: item[1]))
+    print(rosette43_XDic)
+
 
     # Plot the results
     plt.figure(figsize=(10, 5))
@@ -182,7 +216,19 @@ if __name__ == "__main__":
     plt.ylabel('Latitude (degrees)')
     plt.grid(True)
     plt.legend()
+    plt.tight_layout()
+    plt.show()
 
+
+
+
+    orbits = [polarDic]
+    with open(outputPath, 'w') as file:
+        for i, d in enumerate(orbits):
+            file.write(", ".join(str(i) for i in d))
+            file.write("\n")
+
+    print(f"[+] Orbits have been written to {outputPath}")
 
 
     # =============================================================================================

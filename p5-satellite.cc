@@ -34,7 +34,7 @@ NS_LOG_COMPONENT_DEFINE("P5-Satellite");
 
 // Function to be scheduled periodically in the ns3 simulator.
 void simulationPhase(NodeContainer &satellites, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels) {
-    NS_LOG_DEBUG("[->] Simulation at second " << Simulator::Now().GetSeconds());    // Gets the elapsed seconds in the simulation
+    // NS_LOG_DEBUG("[->] Simulation at second " << Simulator::Now().GetSeconds());    // Gets the elapsed seconds in the simulation
 
     // Set the new positions of the satellites and update their position in Net Animator.
     for (uint32_t n = 0; n < satellites.GetN(); ++n) {
@@ -68,6 +68,15 @@ int main(int argc, char* argv[]) {
 
     std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
     NodeContainer satellites = createSatellitesFromTLE(satelliteCount, satelliteMobilityModels, tleDataPath, TLEVector);
+
+
+    // std::vector<std::string> polarSatellites = {"STARLINK-4391", "STARLINK-4332", "STARLINK-4369", "STARLINK-4375", "STARLINK-4351", "STARLINK-4382", "STARLINK-4404", "STARLINK-4407", "STARLINK-4403", "STARLINK-4385", "STARLINK-4395", "STARLINK-4417", "STARLINK-4405", "STARLINK-4411", "STARLINK-4409", "STARLINK-4410", "STARLINK-4397", "STARLINK-4408", "STARLINK-4413", "STARLINK-4425", "STARLINK-4423", "STARLINK-4427", "STARLINK-4419", "STARLINK-4416", "STARLINK-4414", "STARLINK-4353", "STARLINK-4335", "STARLINK-4376", "STARLINK-4379", "STARLINK-4384", "STARLINK-4373", "STARLINK-4363", "STARLINK-4377", "STARLINK-4381", "STARLINK-4354", "STARLINK-4356", "STARLINK-4358", "STARLINK-4359", "STARLINK-4366", "STARLINK-4365", "STARLINK-4367", "STARLINK-4364", "STARLINK-4370", "STARLINK-4371", "STARLINK-4372", "STARLINK-4368"};
+    // NodeContainer tempNode(0);
+    // for (auto& name : polarSatellites) {
+    //     tempNode.Add( Names::Find<Node>(name) );
+    // }
+    // satellites = tempNode;
+    
 
     std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
     std::vector<GeoCoordinate> groundStationsCoordinates;
