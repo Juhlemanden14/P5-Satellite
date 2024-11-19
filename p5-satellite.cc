@@ -202,7 +202,8 @@ int main(int argc, char* argv[]) {
 
     Simulator::Schedule(Seconds(0.001), ConnectSocket, clientSocket, serverAddr, servPort);
     Simulator::Schedule(Seconds(1), SendData, clientSocket);
-    Simulator::Schedule(Seconds(2), SendData, clientSocket);
+    Simulator::Schedule(Seconds(6), SendData, clientSocket); // This should fail, however it sends the message after the channel has been connected to the two netdevices again, see wireshark.
+    Simulator::Schedule(Seconds(9), SendData, clientSocket);
     
 
     //sourceApps.Start(Seconds(0.0));
@@ -221,7 +222,7 @@ int main(int argc, char* argv[]) {
     // --------------------------------------
 
     // ----- scheduling link break and link creation ------
-    /* Simulator::Schedule(Seconds(5), [&groundStations, theBannedChannel](){
+    Simulator::Schedule(Seconds(5), [&groundStations, theBannedChannel](){
         Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
         for (size_t device = 0; device < chan->GetNDevices(); ++device) {
             
@@ -238,9 +239,9 @@ int main(int argc, char* argv[]) {
         NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
 
         //Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-    }); */
+    });
 
-    /* Simulator::Schedule(Seconds(7), [&groundStations](){
+    Simulator::Schedule(Seconds(7), [&groundStations](){
         Ptr<CsmaChannel> testChannel = CreateObject<CsmaChannel>();
         testChannel->SetAttribute("DataRate", StringValue("1MBps"));
         double delayVal = 3000000.0 / 299792458.0;  // seconds
@@ -253,7 +254,7 @@ int main(int argc, char* argv[]) {
         groundStations.Get(1)->GetObject<Ipv4>()->SetUp(1);
 
         // Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-    }); */
+    });
     // ----------------------------------------------------
 
 
