@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
 
     // ========================================= TLE handling and node Setup =========================================
     std::vector<TLE> TLEVector;
-    Ptr<CsmaChannel> theBannedChannel = CreateObject<CsmaChannel>();   // a global channel used for netdevices that are not in use. They point to this unusable channel istead of having a dangling pointer
+    Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();   // a global channel used for netdevices that are not in use. They point to this unusable channel istead of having a dangling pointer
 
     std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
     NodeContainer satellites = createSatellitesFromTLE(satelliteCount, satelliteMobilityModels, tleDataPath, TLEVector);
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
     // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
     groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
 
-    NodeContainer groundStations = createGroundStations(2, groundStationsMobilityModels, groundStationsCoordinates, theBannedChannel);
+    NodeContainer groundStations = createGroundStations(2, groundStationsMobilityModels, groundStationsCoordinates, nullChannel);
     NS_LOG_DEBUG("[E] MAC: " << groundStations.Get(1)->GetDevice(1)->GetAddress());
 
     // ----- REMOVE LATER -----
@@ -140,11 +140,11 @@ int main(int argc, char* argv[]) {
     //     Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(chan->GetDevice(dv));
         
     //     // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
-    //     currCsmaNetDevice->Attach(theBannedChannel);
+    //     currCsmaNetDevice->Attach(nullChannel);
     // }
     // chan->Dispose();
     
-    // NS_LOG_DEBUG("[E] Check of theBannedChanel ptr value " << theBannedChannel);
+    // NS_LOG_DEBUG("[E] Check of theBannedChanel ptr value " << nullChannel);
     // NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
     // NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
 
@@ -222,19 +222,19 @@ int main(int argc, char* argv[]) {
     // --------------------------------------
 
     // ----- scheduling link break and link creation ------
-    Simulator::Schedule(Seconds(5), [&groundStations, theBannedChannel](){
+    Simulator::Schedule(Seconds(5), [&groundStations, nullChannel](){
         Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
         for (size_t device = 0; device < chan->GetNDevices(); ++device) {
             
             Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(chan->GetDevice(device));
             
             // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
-            currCsmaNetDevice->Attach(theBannedChannel);
+            currCsmaNetDevice->Attach(nullChannel);
             groundStations.Get(device)->GetObject<Ipv4>()->SetDown(1);
         }
         chan->Dispose();
         
-        NS_LOG_DEBUG("[E] Check of theBannedChanel ptr value " << theBannedChannel);
+        NS_LOG_DEBUG("[E] Check of theBannedChanel ptr value " << nullChannel);
         NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
         NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
 
@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
         testChannel->SetAttribute("DataRate", StringValue("1MBps"));
         double delayVal = 3000000.0 / 299792458.0;  // seconds
         testChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
-        
+
         DynamicCast<CsmaNetDevice>(groundStations.Get(0)->GetDevice(1))->Attach(testChannel);
         DynamicCast<CsmaNetDevice>(groundStations.Get(1)->GetDevice(1))->Attach(testChannel);
 
