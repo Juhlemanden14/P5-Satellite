@@ -60,10 +60,11 @@ int main(int argc, char* argv[]) {
     cmd.Parse(argc, argv);
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
     // ==========================================================================================================================
-
+    
 
     // ========================================= TLE handling and node Setup =========================================
     std::vector<TLE> TLEVector;
+    Ptr<CsmaChannel> theBannedChannel = CreateObject<CsmaChannel>();   // a global channel used for netdevices that are not in use. They point to this unusable channel istead of having a dangling pointer
 
     std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
     NodeContainer satellites = createSatellitesFromTLE(satelliteCount, satelliteMobilityModels, tleDataPath, TLEVector);
@@ -78,7 +79,40 @@ int main(int argc, char* argv[]) {
     // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
     groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
 
-    NodeContainer groundStations = createGroundStations(2, groundStationsMobilityModels, groundStationsCoordinates);
+    NodeContainer groundStations = createGroundStations(2, groundStationsMobilityModels, groundStationsCoordinates, theBannedChannel);
+    NS_LOG_DEBUG("[E] MAC: " << groundStations.Get(1)->GetDevice(1)->GetAddress());
+
+    // ----- REMOVE LATER -----
+    // trying to make a new link between the GS's
+    Ptr<CsmaChannel> testChannel = CreateObject<CsmaChannel>();
+    testChannel->SetAttribute("DataRate", StringValue("1MBps"));
+    double delayVal = 3000000.0 / 299792458.0;  // seconds
+    testChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
+    
+    DynamicCast<CsmaNetDevice>(groundStations.Get(0)->GetDevice(1))->Attach(testChannel);
+    DynamicCast<CsmaNetDevice>(groundStations.Get(1)->GetDevice(1))->Attach(testChannel);
+
+
+    NS_LOG_DEBUG("[E] Check of testChannel ptr value " << testChannel);
+    NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
+    NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
+
+
+    // Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
+    // for (size_t dv = 0; dv < chan->GetNDevices(); ++dv) {
+        
+    //     Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(chan->GetDevice(dv));
+        
+    //     // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
+    //     currCsmaNetDevice->Attach(theBannedChannel);
+    // }
+    // chan->Dispose();
+    
+    // NS_LOG_DEBUG("[E] Check of theBannedChanel ptr value " << theBannedChannel);
+    // NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
+    // NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
+
+    // ----- REMOVE LATER -----
 
     // Testing purposes
     int lookupIndex = 0;
@@ -90,6 +124,52 @@ int main(int argc, char* argv[]) {
     NS_LOG_DEBUG("GS-0 coords " << groundStationsMobilityModels[0]->GetGeoPosition());
     double gs_sat_dist = groundStationsMobilityModels[0]->GetDistanceFrom(satelliteMobilityModels[lookupIndex]);
     NS_LOG_DEBUG("Distance between GS 0 and sat 1 is -> " << gs_sat_dist/1000 << " km");
+
+
+
+    // ----- Testing of TCP between GSs -----
+    
+    // TCP Server receiving data
+    PacketSinkHelper sink("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), 7777));
+    ApplicationContainer serverApps = sink.Install(groundStations.Get(0));
+    serverApps.Start(Seconds(0));
+
+    NS_LOG_DEBUG("[E] IPV4 address: " << groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress());
+    
+    // TCP Client
+    NS_LOG_UNCOND("Server IP: " << groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress());
+    OnOffHelper onOffHelper("ns3::TcpSocketFactory", InetSocketAddress(groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777));
+    onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.5]"));
+    onOffHelper.SetAttribute("PacketSize", UintegerValue(512));
+    
+    ApplicationContainer clientApps = onOffHelper.Install(groundStations.Get(1));
+
+    clientApps.Start(Seconds(0.1));
+    clientApps.Stop(Seconds(10));
+
+    // --------------------------------------
+
+    Simulator::Schedule(Seconds(5), [&groundStations, theBannedChannel](){
+        Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
+        for (size_t device = 0; device < chan->GetNDevices(); ++device) {
+            
+            Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(chan->GetDevice(device));
+            
+            // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
+            currCsmaNetDevice->Attach(theBannedChannel);
+            groundStations.Get(device)->GetObject<Ipv4>()->SetDown(1);
+        }
+        chan->Dispose();
+        
+        NS_LOG_DEBUG("[E] Check of theBannedChanel ptr value " << theBannedChannel);
+        NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
+        NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
+
+        Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+    });
+
+
+
     // ===============================================================================================================
 
 
@@ -104,7 +184,7 @@ int main(int argc, char* argv[]) {
     simulationPhase(satellites, satelliteMobilityModels, groundStationsMobilityModels);
     // Run simulation phase at i intervals
     int interval = 60*0.1;
-    for (int i = 1; i < 200; ++i) {
+    for (int i = 1; i < 2; ++i) {
         Time t = Seconds(i * interval);
         Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
     }
@@ -125,8 +205,6 @@ int main(int argc, char* argv[]) {
     }
     anim.UpdateNodeDescription(groundStations.Get(0), "Hartebeesthoek");
     anim.UpdateNodeDescription(groundStations.Get(1), "Tea Gardens");
-
-
     // ==================================================================================================================
 
 
@@ -143,6 +221,9 @@ int main(int argc, char* argv[]) {
     // Ipv4AddressHelper address;
     // address.SetBase("10.1.1.0", "255.255.255.0");
     // Ipv4InterfaceContainer interfaces = address.Assign(devices);
+
+
+    Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
     NS_LOG_UNCOND("[!] Simulation is running!");
     Simulator::Run();

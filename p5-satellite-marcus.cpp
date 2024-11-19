@@ -5,6 +5,7 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/netanim-module.h"
 // #include "ns3/satellite-module.h"
+# include "ns3/csma-module.h"
 
 #include "tleHandler.h"
 #include "constellationHandler.h"
@@ -108,10 +109,13 @@ int main(int argc, char* argv[]) {
         Ptr<Channel> GSChannel = currentGS->GetDevice(1)->GetChannel(); // THERE IS ALWAYS A 0'th NETDEVICE FOR SOME FUCKING REASON. maybe loopback?
         NS_LOG_DEBUG("[E] GS channel: " << GSChannel);   // debugging print before deleting channel
         if (GSChannel != nullptr) {
-            currentGS->GetDevice(1)->GetChannel()->Dispose();    // delete unused channels if exists
-            NS_LOG_DEBUG("[E] GS channel ID: " << currentGS->GetDevice(1)->GetChannel()->GetId());
+            // currentGS->GetDevice(1)->GetChannel()->Dispose();    // delete unused channels if exists
+            Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(currentGS->GetDevice(1));
+            NS_LOG_DEBUG("[E] currCsmaNetDevice: " << currCsmaNetDevice);
+            NS_LOG_DEBUG("[E] GS channel ID: " << currentGS->GetDevice(1));
         }
         NS_LOG_DEBUG("[E] GS channel: " << currentGS->GetDevice(1)->GetChannel()); // debugging print after deleting channel
+        NS_LOG_DEBUG("[E] Mac shit: " << currentGS->GetDevice(1)->GetAddress());
         
     }
 
@@ -146,11 +150,11 @@ int main(int argc, char* argv[]) {
     Ptr<Channel> SatChannel = satellites.Get(0)->GetDevice(4)->GetChannel();
     NS_LOG_DEBUG("[E] SatChannel 4: " << SatChannel);
 
-    Ptr<NetDevice> sat0Net1 = satellites.Get(0)->GetDevice(1);
-    Ptr<NetDevice> sat1Net3 = satellites.Get(1)->GetDevice(3);
-    csmaHelper.Install(sat0Net1, sat1Net3->GetChannel());
-    NS_LOG_DEBUG("[E] Sat0Net1 channel: " << sat0Net1->GetChannel());
-    NS_LOG_DEBUG("[E] Sat1Net3 channel: " << sat1Net3->GetChannel());
+    // Ptr<NetDevice> sat0Net1 = satellites.Get(0)->GetDevice(1);
+    // Ptr<NetDevice> sat1Net3 = satellites.Get(1)->GetDevice(3);
+    // csmaHelper.Install(sat0Net1, sat1Net3->GetChannel());
+    // NS_LOG_DEBUG("[E] Sat0Net1 channel: " << sat0Net1->GetChannel());
+    // NS_LOG_DEBUG("[E] Sat1Net3 channel: " << sat1Net3->GetChannel());
 
     // =================================================================================================
 

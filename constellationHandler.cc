@@ -6,6 +6,7 @@
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/netanim-module.h"
+#include "ns3/csma-module.h"
 
 using namespace ns3;
 
@@ -56,13 +57,21 @@ NodeContainer createSatellitesFromTLE(int satelliteCount, std::vector<Ptr<SatSGP
 }
 
 
-NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, std::vector<GeoCoordinate> groundStationsCoordinates) {
+NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, std::vector<GeoCoordinate> groundStationsCoordinates, Ptr<CsmaChannel> &nullChannel) {
     LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_ALL);
     
     NodeContainer groundStations(groundStationCount);
 
     InternetStackHelper stackHelper;
     stackHelper.Install(groundStations);
+
+    CsmaHelper csmaHelper;
+
+    Ipv4AddressHelper gsAddressHelper;
+    gsAddressHelper.SetBase("10.0.0.0", "255.0.0.0");
+    
+    NetDeviceContainer gsNetDevices;
+
     NS_LOG_INFO("[+] Internet stack installed on groundstations");
 
     for (size_t n = 0; n < groundStationsCoordinates.size(); ++n) {
@@ -71,17 +80,24 @@ NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatCo
         GSMobility->SetGeoPosition(groundStationsCoordinates[n]);
         groundStationsMobilityModels.emplace_back(GSMobility);
 
-        CsmaHelper csma;
-        NetDeviceContainer deviceContainer = csma.Install(groundStations.Get(n));
-        /*
-        deviceContainer.Get(0)->
-        
-        Ptr<CsmaChannel> csmaChannel = DynamicCast<CsmaChannel>(groundStations.Get(n)->GetDevice(0)->GetChannel());
-        csmaChannel->Detach(0);
-        Ptr<CsmaNetDevice> csmaDevice = DynamicCast<CsmaNetDevice>(deviceContainer.Get(0));
-        */
+        Ptr<Node> currentGS = groundStations.Get(n);
+        csmaHelper.Install(currentGS);   // Installs both a CsmaNetDevice and a Channel for each GS
+        if (currentGS->GetDevice(1)->GetChannel() != nullptr) {
+            currentGS->GetDevice(1)->GetChannel()->Dispose();       // delete unused channels if exists
+        }
+        // NS_LOG_DEBUG("[E] MAC: " << currentGS->GetDevice(1)->GetAddress());
+
+        // make sure that channel pointer is pointing to the banned channel, since channel is now destroyed
+        Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(currentGS->GetDevice(1));
+        currCsmaNetDevice->Attach(nullChannel);
+
+        gsNetDevices.Add(currentGS->GetDevice(1));
     }
     NS_LOG_DEBUG("[+] SatConstantPositionMobilityModel installed on " << groundStations.GetN() << " ground stations");
+    
+    gsAddressHelper.Assign(gsNetDevices);
+
+    csmaHelper.EnablePcapAll("satellite", true);
 
     return groundStations;
 }
@@ -132,4 +148,9 @@ bool checkGSLink(int gsIndex, std::vector<Ptr<SatConstantPositionMobilityModel>>
     }
 
     return false;
+}
+
+
+void establishLink(Ptr<Node> node1, Ptr<Node> node2, double distanceKM, StringValue dataRate) {
+
 }

@@ -90,17 +90,21 @@ int main(int argc, char *argv[]) {
 
     // Enable internet stack on all nodes
     InternetStackHelper internet;
-    internet.Install(nodes);
-
-    // Initialize the address helper with a base IP and subnet mask
-    Ipv4AddressHelper address;
+    // Ptr<NetDevice> sat1Net3 = satellites.Get(1)->GetDevice(3);
+    // csmaHelper.Install(sat0Net1, sat1Net3->GetChannel());
+    // NS_LOG_DEBUG("[E] Sat0Net1 channel: " << sat0Net1->GetChannel());
+    // NS_LOG_DEBUG("[E] Sat1Net3 channel: " << sat1Net3->GetChannel());
     address.SetBase("10.1.1.0", "255.255.255.0");
 
     // csmaHelper.SetChannelAttribute("DataRate", StringValue("5MBps"));
     // csmaHelper.SetChannelAttribute("Delay", TimeValue(MilliSeconds(2)));
 
     // Add initial links with IP address assignment
-    AddLink(nodes.Get(0), nodes.Get(1), csmaHelper, address);
+    AddLink(nodes.Get(0), nodes.Get(1), c
+    // Ptr<NetDevice> sat1Net3 = satellites.Get(1)->GetDevice(3);
+    // csmaHelper.Install(sat0Net1, sat1Net3->GetChannel());
+    // NS_LOG_DEBUG("[E] Sat0Net1 channel: " << sat0Net1->GetChannel());
+    // NS_LOG_DEBUG("[E] Sat1Net3 channel: " << sat1Net3->GetChannel());smaHelper, address);
     AddLink(nodes.Get(1), nodes.Get(2), csmaHelper, address);
     AddLink(nodes.Get(2), nodes.Get(3), csmaHelper, address);
     AddLink(nodes.Get(3), nodes.Get(4), csmaHelper, address);

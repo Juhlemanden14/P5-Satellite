@@ -130,7 +130,6 @@ int main(int argc, char* argv[]) {
     address.NewNetwork();
     Ipv4InterfaceContainer In0n6 = address.Assign(n0n6);
 
-
     Ptr<Ipv4> ipv11 = nodes.Get(1)->GetObject<Ipv4>();
     // The first ifIndex is 0 for loopback, then the first p2p is numbered 1, then the next p2p is numbered 2
     uint32_t ipv4Index = 2;
