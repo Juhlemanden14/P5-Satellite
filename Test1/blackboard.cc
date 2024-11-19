@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
     NetDeviceContainer n2n4 = csmaHelper.Install(NodeContainer(nodes.Get(2), nodes.Get(4)));
     NetDeviceContainer n2n5 = csmaHelper.Install(NodeContainer(nodes.Get(2), nodes.Get(5)));
     NetDeviceContainer n0n6 = csmaHelper.Install(NodeContainer(nodes.Get(0), nodes.Get(6)));
-    // Fuck one of the link in the lower region
+    // Fuck one of the links in the lower region
     csmaHelper.SetChannelAttribute("DataRate", StringValue("1KBps"));
     NetDeviceContainer n3n4 = csmaHelper.Install(NodeContainer(nodes.Get(3), nodes.Get(4)));
 

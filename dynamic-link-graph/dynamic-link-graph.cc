@@ -6,6 +6,11 @@
 #include "ns3/ipv4-address-helper.h"
 #include "ns3/point-to-point-module.h"
 
+#include "ns3/applications-module.h"
+#include "ns3/ipv4-global-routing-helper.h"
+#include "ns3/network-module.h"
+
+
 #include "ns3/netanim-module.h"     // NetAnimator
 #include "ns3/mobility-module.h"    // Mobility module to give them position
 
@@ -103,7 +108,23 @@ int main(int argc, char *argv[]) {
     // Example: Remove and add links dynamically during runtime
     // Simulator::Schedule(Seconds(10), &RemoveLink, 0, 3);  // Remove link between n0 and n3 at 10 seconds
     Simulator::Schedule(Seconds(2), &AddLink, nodes.Get(4), nodes.Get(0), csmaHelper, address);  // Add link between n2 and n4 at 20 seconds
+    Simulator::Schedule(Seconds(2.01), &Ipv4GlobalRoutingHelper::PopulateRoutingTables);
 
+    Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
+
+    // TCP Server receiving data
+    PacketSinkHelper sink("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), 7777));
+    ApplicationContainer serverApps = sink.Install(nodes.Get(0));
+    serverApps.Start(Seconds(0));
+
+    // TCP Client
+    // NS_LOG_UNCOND("Server IP: " << nodes.Get(0)->GetDevice());
+    // OnOffHelper onOffHelper("ns3::TcpSocketFactory", InetSocketAddress(In2n5.GetAddress(1), 7777));
+    // onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.0]"));
+    // onOffHelper.SetAttribute("PacketSize", UintegerValue(512));
+    // ApplicationContainer clientApps = onOffHelper.Install(nodes.Get(6));
+    // clientApps.Start(Seconds(0.1));
+    // clientApps.Stop(Seconds(10));
 
 
 
