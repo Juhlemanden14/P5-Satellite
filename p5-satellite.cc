@@ -45,6 +45,34 @@ void simulationPhase(NodeContainer &satellites, std::vector<Ptr<SatSGP4MobilityM
     }
 }
 
+// DEBUG
+static void CwndTracer(uint32_t oldval, uint32_t newval) {
+    NS_LOG_UNCOND( "CWND at sim time:" << Simulator::Now().GetSeconds() << "s, CWND:" << oldval << " --> " << newval);
+}
+
+
+void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
+
+    NS_LOG_UNCOND("CW Window traced Node id: " << nodeId << " socketid: " << socketId);
+
+    Config::ConnectWithoutContext("/NodeList/" + std::to_string(nodeId) + "/$ns3::TcpL4Protocol/SocketList/" + std::to_string(socketId) + "/CongestionWindow", MakeBoundCallback(&CwndTracer));
+}
+
+void SendData (Ptr<Socket> &socket) {
+    static const uint32_t writeSize = 1040;
+    uint8_t data[writeSize];
+    for (uint32_t i = 0; i < writeSize; ++i)
+    {
+        char m = toascii(97 + i % 26);
+        data[i] = m;
+    }
+    socket->Send(&data[0], writeSize, 0);
+}
+
+void ConnectSocket (Ptr<Socket> &socket, Ipv4Address destAddr, uint16_t destPort) {
+    // Connect source to sink.
+    socket->Connect(InetSocketAddress(destAddr, destPort));
+}
 
 int main(int argc, char* argv[]) {
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
@@ -101,7 +129,6 @@ int main(int argc, char* argv[]) {
     DynamicCast<CsmaNetDevice>(groundStations.Get(0)->GetDevice(1))->Attach(testChannel);
     DynamicCast<CsmaNetDevice>(groundStations.Get(1)->GetDevice(1))->Attach(testChannel);
 
-
     NS_LOG_DEBUG("[E] Check of testChannel ptr value " << testChannel);
     NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
     NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
@@ -139,7 +166,7 @@ int main(int argc, char* argv[]) {
     // ----- Testing of TCP between GSs -----
     
     // // TCP Server receiving data
-    // PacketSinkHelper sink("ns3::UdpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), 7777));
+    // PacketSinkHelper sink("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), 7777));
     // ApplicationContainer serverApps = sink.Install(groundStations.Get(0));
     // serverApps.Start(Seconds(0));
     
@@ -151,25 +178,50 @@ int main(int argc, char* argv[]) {
     
     //ApplicationContainer clientApps = onOffHelper.Install(groundStations.Get(1));
 
-    UdpEchoServerHelper echoServer(7777);
+    // ========================= TCP CWND TRACE TEST ========================
+    uint16_t servPort = 7777;
 
-    ApplicationContainer serverApps = echoServer.Install(groundStations.Get(0));
+    // Create a sink and install it on the node with index 1.
+    PacketSinkHelper sink("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), servPort));
+    
+    ApplicationContainer serverApps = sink.Install(groundStations.Get(1));
     serverApps.Start(Seconds(0.0));
-    serverApps.Stop(Seconds(15.0));
+    serverApps.Stop(Seconds(12.0));
 
-    UdpEchoClientHelper echoClient(InetSocketAddress(groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777));
-    echoClient.SetAttribute("MaxPackets", UintegerValue(5));
-    echoClient.SetAttribute("Interval", TimeValue(Seconds(3.0)));
-    echoClient.SetAttribute("PacketSize", UintegerValue(1024));
-    ApplicationContainer clientApps = echoClient.Install(groundStations.Get(1));
+    // Create a source
+    Ipv4Address serverAddr = groundStations.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress();
+    BulkSendHelper source("ns3::TcpSocketFactory", InetSocketAddress(serverAddr, servPort));
+    source.SetAttribute("MaxBytes", UintegerValue(4096));
+    source.SetAttribute("SendSize", UintegerValue(1024));
 
-    clientApps.Start(Seconds(0.0));
-    clientApps.Stop(Seconds(15.0));
+
+    NS_LOG_DEBUG("[E] Created source socket!");
+    // Get socket object
+    Ptr<Socket> clientSocket = Socket::CreateSocket(groundStations.Get(0), TcpSocketFactory::GetTypeId());
+    clientSocket->Bind();
+
+    Simulator::Schedule(Seconds(0.001), ConnectSocket, clientSocket, serverAddr, servPort);
+    Simulator::Schedule(Seconds(1), SendData, clientSocket);
+    Simulator::Schedule(Seconds(2), SendData, clientSocket);
+    
+
+    //sourceApps.Start(Seconds(0.0));
+    //sourceApps.Stop(Seconds(12.0));
+
+
+    // ========================= TCP CWND TRACE TEST ========================
+    Simulator::Schedule(MilliSeconds(1), &TraceCwnd, groundStations, 1 + satelliteCount, 0);
+
+    // *-*-*-*-* VERY IMPORTANT *-*-*-*-*
+    /* The tracer's "NodeList" is the total amount of nodes, because the satellite,
+       nodes are setup before the ground stations. Therefore to trace a specific socket,
+       we need to add the satellite count ot the index of the node.
+    */
 
     // --------------------------------------
 
     // ----- scheduling link break and link creation ------
-    Simulator::Schedule(Seconds(5), [&groundStations, theBannedChannel](){
+    /* Simulator::Schedule(Seconds(5), [&groundStations, theBannedChannel](){
         Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
         for (size_t device = 0; device < chan->GetNDevices(); ++device) {
             
@@ -186,9 +238,9 @@ int main(int argc, char* argv[]) {
         NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
 
         //Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-    });
+    }); */
 
-    Simulator::Schedule(Seconds(7), [&groundStations](){
+    /* Simulator::Schedule(Seconds(7), [&groundStations](){
         Ptr<CsmaChannel> testChannel = CreateObject<CsmaChannel>();
         testChannel->SetAttribute("DataRate", StringValue("1MBps"));
         double delayVal = 3000000.0 / 299792458.0;  // seconds
@@ -201,7 +253,7 @@ int main(int argc, char* argv[]) {
         groundStations.Get(1)->GetObject<Ipv4>()->SetUp(1);
 
         // Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-    });
+    }); */
     // ----------------------------------------------------
 
 
@@ -260,7 +312,8 @@ int main(int argc, char* argv[]) {
 
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
-    NS_LOG_UNCOND("[!] Simulation is running!");
+    NS_LOG_UNCOND("");
+    NS_LOG_UNCOND("\x1b[31;1m[!]\x1b[37m Simulation is running!\x1b[0m");
     Simulator::Run();
     Simulator::Destroy();
     return 0;
