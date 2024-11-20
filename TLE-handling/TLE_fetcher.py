@@ -28,7 +28,7 @@ def fetch_TLEs(constellation_name):
     print(ts.tm_mday, ts.tm_mon, ts.tm_year)
 
     # Save the TLE data to a .txt file named after the constellation and the date
-    file_path = "scratch/P5-Satellite/TLE-handling/"
+    file_path = "scratch/P5-Satellite/resources/"
     file_name = f"{constellation_name}_{ts.tm_mday}-{ts.tm_mon}-{ts.tm_year}_tle_data.txt"
 
     with open(file_path + file_name, 'w') as file:

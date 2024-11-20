@@ -79,11 +79,13 @@ int main(int argc, char* argv[]) {
     Time::SetResolution(Time::NS);
     
     // ========================================= Setup default commandline parameters  =========================================
-    std::string tleDataPath = "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_tle_data.txt";
+    std::string tleDataPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt";
+    std::string tleOrbitsPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt";
     int satelliteCount = 2;
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
+    cmd.AddValue("tleorbits", "TLE Orbits path", tleOrbitsPath);
     cmd.AddValue("satCount", "The amount of satellites", satelliteCount);
     cmd.Parse(argc, argv);
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
@@ -200,10 +202,10 @@ int main(int argc, char* argv[]) {
     Ptr<Socket> clientSocket = Socket::CreateSocket(groundStations.Get(0), TcpSocketFactory::GetTypeId());
     clientSocket->Bind();
 
-    Simulator::Schedule(Seconds(0.001), ConnectSocket, clientSocket, serverAddr, servPort);
-    Simulator::Schedule(Seconds(1), SendData, clientSocket);
-    Simulator::Schedule(Seconds(6), SendData, clientSocket); // This should fail, however it sends the message after the channel has been connected to the two netdevices again, see wireshark.
-    Simulator::Schedule(Seconds(9), SendData, clientSocket);
+    // Simulator::Schedule(Seconds(0.001), ConnectSocket, clientSocket, serverAddr, servPort);
+    // Simulator::Schedule(Seconds(1), SendData, clientSocket);
+    // Simulator::Schedule(Seconds(6), SendData, clientSocket); // This should fail, however it sends the message after the channel has been connected to the two netdevices again, see wireshark.
+    // Simulator::Schedule(Seconds(9), SendData, clientSocket);
     
 
     //sourceApps.Start(Seconds(0.0));
@@ -271,8 +273,8 @@ int main(int argc, char* argv[]) {
     // Run simulationphase at time 0
     simulationPhase(satellites, satelliteMobilityModels, groundStationsMobilityModels);
     // Run simulation phase at i intervals
-    int interval = 60*0.1;
-    for (int i = 1; i < 2; ++i) {
+    int interval = 60*1;
+    for (int i = 1; i < 2000; ++i) {
         Time t = Seconds(i * interval);
         Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
     }

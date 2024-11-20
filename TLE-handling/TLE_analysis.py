@@ -58,8 +58,8 @@ def extract_satellites_by_inclination_range(tleDataPath, polar_limit=90, rosette
 
 if __name__ == "__main__":
     # ==================== Fetch, split and plot interesting points ====================
-    tleDataPath =   "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_tle_data.txt"
-    outputPath =    "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_orbits.txt"
+    tleDataPath =   "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt"
+    outputPath =    "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt"
 
 
     with open(tleDataPath, 'r') as file:
