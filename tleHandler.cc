@@ -1,4 +1,6 @@
 #include "tleHandler.h"
+#include <fstream>
+#include <sstream>
 
 
 // Function to trim trailing spaces, carriage returns, and newline characters
@@ -30,4 +32,33 @@ std::vector<TLE> ReadTLEFile(const std::string &filename, std::string &TLEAge) {
         }
     }
     return tleData;
+}
+
+// Function to read orbit file and format data into compatible string format
+std::vector<Orbit> ReadOrbitFile(const std::string &filename) {
+    std::ifstream file(filename);
+    std::vector<Orbit> orbitData;
+    std::string line;
+
+    while (std::getline(file, line)) {
+        Orbit orbitEntry;
+        TrimTrailingSpaces(line);  // Trim whitespace from the orbit name
+        orbitEntry.name = line;
+
+        if (std::getline(file, line)) {
+            TrimTrailingSpaces(line);  // Trim whitespace from the satellite names line
+
+            // Split the line by commas to get individual satellite names
+            std::stringstream ss(line);
+            std::string satelliteName;
+            while (std::getline(ss, satelliteName, ',')) {
+                TrimTrailingSpaces(satelliteName);  // Trim each satellite name
+                orbitEntry.satellites.push_back(satelliteName);  // Add satellite to the vector
+            }
+        }
+
+        orbitData.push_back(orbitEntry);  // Add orbit entry to the list
+    }
+
+    return orbitData;
 }

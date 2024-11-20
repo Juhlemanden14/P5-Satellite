@@ -10,10 +10,11 @@
 
 #include "tleHandler.h"
 
+
 using namespace ns3;
 
 // Returns node container with all satellites, passes satelliteMobiliyModels and TLEDataVector by reference.
-NodeContainer createSatellitesFromTLE(int satelliteCount, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::string tleDataPath, std::vector<TLE> &TLEDataVector);
+NodeContainer createSatellitesFromTLEAndOrbits(uint32_t satelliteCount, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::string tleDataPath, std::string tleOrbitsPath, std::vector<TLE> &TLEVector, std::vector<Orbit> &OrbitVector);
 
 // Returns node container with all groundstations, passes groundStationsMobilityModels by reference.
 NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, std::vector<GeoCoordinate> groundStationsCoordinates, Ptr<CsmaChannel> &nullChannel);
