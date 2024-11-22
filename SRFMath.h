@@ -1,5 +1,5 @@
-#ifndef LINK_HANDLER_H
-#define LINK_HANDLER_H
+#ifndef SRF_MATH_H
+#define SRF_MATH_H
 
 #include "ns3/satellite-module.h"
 

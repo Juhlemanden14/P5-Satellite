@@ -1,13 +1,13 @@
-# include "linkHandler.h"
+# include "SRFMath.h"
 
 #include <cmath>
 
 #include "ns3/core-module.h"
 #include "ns3/satellite-module.h"
 
-
 using namespace ns3;
-NS_LOG_COMPONENT_DEFINE("P5-Link-Handler");
+NS_LOG_COMPONENT_DEFINE("P5-SRFMath");
+
 
 Vector normalizeVector(Vector vec) {
     double vec_mag = vec.GetLength();   // calculate the magnitude of the vector
