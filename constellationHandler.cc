@@ -105,8 +105,9 @@ NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatCo
     for (size_t n = 0; n < groundStationsCoordinates.size(); ++n) {
         // Create the single netdevice on each ground station
         NetDeviceContainer gsNetDevice = csmaHelper.Install(groundStations.Get(n));
-        // Assign an ip to the ground station.
+        // Assign an ip to the ground station but turn the interface down!
         gsAddressHelper.Assign(gsNetDevice);
+        groundStations.Get(n)->GetObject<Ipv4>()->SetDown(1);
         // Migrate to a new subnet for future ground stations
         gsAddressHelper.NewNetwork();
 
