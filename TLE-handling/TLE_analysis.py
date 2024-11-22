@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import re
 from skyfield.api import Loader, EarthSatellite, Topos
+from datetime import datetime
 
 # Function to categorize satellites based on inclination and output debug information
 def extract_satellites_by_inclination_range(tleDataPath, polar_limit=90, rosette_ranges=((52.5, 53.5), (42.5, 43.5)),
@@ -66,6 +67,7 @@ if __name__ == "__main__":
     # Each satellite has 3 datapoints. And the file has 1 entry line containing the date
     satCount = int((len(content)-1) / 3)
 
+    timeOfTLE = datetime.strptime(content[0].strip(), "%Y-%m-%d %H:%M:%S")
     TLEs = {}
     names = []
     Inclinations = np.zeros(satCount, dtype=np.float64)
@@ -182,31 +184,67 @@ if __name__ == "__main__":
     satellites = [EarthSatellite(line1, line2, name, ts) for name, line1, line2 in tle_data]
     
     # Compute latitude and longitude
-    time = ts.now()
+    time = ts.utc(timeOfTLE.year, timeOfTLE.month, timeOfTLE.day, timeOfTLE.hour, timeOfTLE.minute, timeOfTLE.second)
+    print(time, timeOfTLE)
     latitudes = []
     longitudes = []
     polarDic = {}
     rosette43_XDic = [{} for _ in range(len(namesRosette43_X))]
+    rosette53_XDic = [{} for _ in range(len(namesRosette53_X))]
+
 
     for satellite in satellites:
-        subpoint = satellite.at(time).subpoint()
+        geocentric = satellite.at(time)
+        subpoint = geocentric.subpoint()
         latitudes.append(subpoint.latitude.degrees)
         longitudes.append(subpoint.longitude.degrees)
 
         if satellite.name in polarNames:
-            polarDic[satellite.name] = subpoint.latitude.degrees
-
+            polarDic[satellite.name] = subpoint.longitude.degrees
         for i, orbit in enumerate(namesRosette43_X):
             if satellite.name in orbit:
                 rosette43_XDic[i][satellite.name] = subpoint.longitude.degrees
+        for i, orbit in enumerate(namesRosette53_X):
+            if satellite.name in orbit:
+                rosette53_XDic[i][satellite.name] = subpoint.longitude.degrees
+
+        # # Extract orbital elements
+        # n = satellite.model.no_kozai  # Mean motion (radians per minute)
+        # M0 = satellite.model.mo        # Mean anomaly at epoch (radians)
+        # epoch = satellite.model.jdsatepoch  # Epoch of TLE (Julian date)
+        # # Time since epoch in minutes
+        # t_since_epoch = (time.tt - epoch) * 1440.0  # Days to minutes
+        # # Calculate current Mean Anomaly
+        # M = (M0 + n * t_since_epoch) % (2 * 3.141592653589793)  # Ensure within 0 to 2π
+        # mean_anomaly_degrees = M * (180.0 / 3.141592653589793)  # Convert to degrees
+        # print(f"{satellite.name} {mean_anomaly_degrees}")
+
     
+
     # Sort the orbits based on their appending coordinates (lat/long)!
     polarDic = dict(sorted(polarDic.items(), key=lambda item: item[1]))
-    # print(polarDic)
-    for d in rosette43_XDic:
+    for i, d in enumerate(rosette43_XDic):
         rosette43_XDic[i] = dict(sorted(d.items(), key=lambda item: item[1]))
-    print(rosette43_XDic)
+    for i, d in enumerate(rosette53_XDic):
+        rosette53_XDic[i] = dict(sorted(d.items(), key=lambda item: item[1]))
 
+
+    with open(outputPath, 'w') as file:
+        file.write("Polar97\n")
+        file.write(",".join(list(polarDic.keys())))
+        file.write("\n")
+
+        for i, d in enumerate(rosette43_XDic):
+            file.write(f"Rosette43_{i}\n")
+            file.write(",".join(list(d.keys())))
+            file.write("\n")
+
+        for i, d in enumerate(rosette53_XDic):
+            file.write(f"Rosette53_{i}\n")
+            file.write(",".join(list(d.keys())))
+            file.write("\n")
+
+    print(f"[+] Orbits have been written to {outputPath}")
 
     # Plot the results
     plt.figure(figsize=(10, 5))
@@ -218,18 +256,6 @@ if __name__ == "__main__":
     plt.legend()
     plt.tight_layout()
     plt.show()
-
-
-
-
-    orbits = [polarDic]
-    with open(outputPath, 'w') as file:
-        for i, d in enumerate(orbits):
-            file.write(", ".join(str(i) for i in d))
-            file.write("\n")
-
-    print(f"[+] Orbits have been written to {outputPath}")
-
 
     # =============================================================================================
     # extract_satellites_by_inclination_range(tleDataPath, polar_limit=90, rosette_ranges=((52.5, 53.5), (42.5, 43.5)), polar_count=200, rosette_count=150)
