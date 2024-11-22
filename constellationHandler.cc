@@ -12,18 +12,36 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("P5-Constellation-Handler");
 
-NodeContainer createSatellitesFromTLE(int satelliteCount, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::string tleDataPath, std::vector<TLE> &TLEDataVector) {
+NodeContainer createSatellitesFromTLEAndOrbits(uint32_t satelliteCount, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::string tleDataPath, std::string orbitsDataPath, std::vector<TLE> &TLEVector, std::vector<Orbit> &OrbitVector) {
     LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_ALL);
-    
-    std::string TLEAge;
-    TLEDataVector = ReadTLEFile(tleDataPath, TLEAge);
-    NS_LOG_INFO("[+] Imported TLE data for " << TLEDataVector.size() << " satellites, with age " << TLEAge);
-    NS_ASSERT_MSG(TLEDataVector.size() != 0, "No satellites were imported?");
 
-    // If no amount of sallites are specified, set equal to the amount of satellites in the TLE data
-    if (satelliteCount == 0) {
-        satelliteCount = TLEDataVector.size();
+    // Read orbit data
+    OrbitVector = ReadOrbitFile(orbitsDataPath);
+    NS_LOG_INFO("[+] Imported orbit data for " << OrbitVector.size() << " orbits");
+
+    std::string TLEAge;
+    TLEVector = ReadTLEFile(tleDataPath, TLEAge);
+
+    // For each satellite in the orbits, only grab that from the TLE data
+    std::vector<TLE> tmp;
+    for (auto& orbit : OrbitVector) {
+        for (auto& name : orbit.satellites) {
+            for (auto& tle : TLEVector){
+                if (name == tle.name)
+                    tmp.push_back(tle);
+            }
+        }
     }
+    TLEVector = tmp;
+    NS_LOG_INFO("[+] Imported TLE data for " << TLEVector.size() << " satellites, with age " << TLEAge);
+    NS_ASSERT_MSG(TLEVector.size() != 0, "No satellites were imported?");
+
+
+    // If no amount of satellites is specified, set it to the number of satellites in the orbit TLE data
+    if (satelliteCount == 0 || satelliteCount > TLEVector.size()) {
+        satelliteCount = TLEVector.size(); // Change this if you want to include all satellites from TLE data!
+    }
+    // LIGE HER
 
     // Create satellite nodes
     NodeContainer satellites(satelliteCount);
@@ -36,11 +54,11 @@ NodeContainer createSatellitesFromTLE(int satelliteCount, std::vector<Ptr<SatSGP
     
     // Create and aggregate the Satellite SGP4 mobility model to each satellite
     std::string formatted_TLE;
-    for (int n = 0; n < satelliteCount; ++n) {
+    for (uint32_t n = 0; n < satelliteCount; ++n) {
         Ptr<SatSGP4MobilityModel> satMobility = CreateObject<SatSGP4MobilityModel>();
         
         // Format the two lines into a single string for NS-3 compatibility - IT MUST BE line1\nline2 WITH NO SPACES!!!
-        formatted_TLE = TLEDataVector[n].line1 + "\n" + TLEDataVector[n].line2; 
+        formatted_TLE = TLEVector[n].line1 + "\n" + TLEVector[n].line2; 
         satMobility->SetTleInfo(formatted_TLE);
         // Set the simulation absolute start time in string format.
         satMobility->SetStartDate(TLEAge);
@@ -50,7 +68,7 @@ NodeContainer createSatellitesFromTLE(int satelliteCount, std::vector<Ptr<SatSGP
         satelliteMobilityModels.emplace_back(satMobility);
 
         // Give each satellite a name equal to the one specified in the TLE data
-        Names::Add(TLEDataVector[n].name, satellites.Get(n));
+        Names::Add(TLEVector[n].name, satellites.Get(n));
     }
 
     return satellites;

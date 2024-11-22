@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
     Time::SetResolution(Time::NS);
     
     // ========================================= Setup default commandline parameters  =========================================
-    std::string tleDataPath = "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_tle_data.txt";
+    std::string tleDataPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt";
     int satelliteCount = 2;
 
     CommandLine cmd(__FILE__);

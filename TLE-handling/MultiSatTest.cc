@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
 
     // Load TLE data from a file
-    std::string filename = "scratch/P5-Satellite/TLE_handling/starlink_11-11-2024_tle_data.txt";
+    std::string filename = "scratch/P5-Satellite/resources/starlink_11-11-2024_tle_data.txt";
     std::vector<TLE> tleDataVec = ReadTLEFile(filename);    // Read and format the TLE data
     
 

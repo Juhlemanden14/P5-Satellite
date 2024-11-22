@@ -79,31 +79,25 @@ int main(int argc, char* argv[]) {
     Time::SetResolution(Time::NS);
     
     // ========================================= Setup default commandline parameters  =========================================
-    std::string tleDataPath = "scratch/P5-Satellite/TLE-handling/starlink_13-11-2024_tle_data.txt";
-    int satelliteCount = 2;
+    std::string tleDataPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt";
+    std::string tleOrbitsPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt";
+    uint32_t satelliteCount = 2;
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
+    cmd.AddValue("tleorbits", "TLE Orbits path", tleOrbitsPath);
     cmd.AddValue("satCount", "The amount of satellites", satelliteCount);
     cmd.Parse(argc, argv);
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
     // ==========================================================================================================================
     
+    Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();   // a global channel used for netdevices that are not in use. They point to this unusable channel istead of having a dangling pointer
 
     // ========================================= TLE handling and node Setup =========================================
     std::vector<TLE> TLEVector;
-    Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();   // a global channel used for netdevices that are not in use. They point to this unusable channel istead of having a dangling pointer
-
+    std::vector<Orbit> OrbitVector;
     std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
-    NodeContainer satellites = createSatellitesFromTLE(satelliteCount, satelliteMobilityModels, tleDataPath, TLEVector);
-
-
-    // std::vector<std::string> polarSatellites = {"STARLINK-4391", "STARLINK-4332", "STARLINK-4369", "STARLINK-4375", "STARLINK-4351", "STARLINK-4382", "STARLINK-4404", "STARLINK-4407", "STARLINK-4403", "STARLINK-4385", "STARLINK-4395", "STARLINK-4417", "STARLINK-4405", "STARLINK-4411", "STARLINK-4409", "STARLINK-4410", "STARLINK-4397", "STARLINK-4408", "STARLINK-4413", "STARLINK-4425", "STARLINK-4423", "STARLINK-4427", "STARLINK-4419", "STARLINK-4416", "STARLINK-4414", "STARLINK-4353", "STARLINK-4335", "STARLINK-4376", "STARLINK-4379", "STARLINK-4384", "STARLINK-4373", "STARLINK-4363", "STARLINK-4377", "STARLINK-4381", "STARLINK-4354", "STARLINK-4356", "STARLINK-4358", "STARLINK-4359", "STARLINK-4366", "STARLINK-4365", "STARLINK-4367", "STARLINK-4364", "STARLINK-4370", "STARLINK-4371", "STARLINK-4372", "STARLINK-4368"};
-    // NodeContainer tempNode(0);
-    // for (auto& name : polarSatellites) {
-    //     tempNode.Add( Names::Find<Node>(name) );
-    // }
-    // satellites = tempNode;
+    NodeContainer satellites = createSatellitesFromTLEAndOrbits(satelliteCount, satelliteMobilityModels, tleDataPath, tleOrbitsPath, TLEVector, OrbitVector);
     
 
     std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
@@ -200,10 +194,10 @@ int main(int argc, char* argv[]) {
     Ptr<Socket> clientSocket = Socket::CreateSocket(groundStations.Get(0), TcpSocketFactory::GetTypeId());
     clientSocket->Bind();
 
-    Simulator::Schedule(Seconds(0.001), ConnectSocket, clientSocket, serverAddr, servPort);
-    Simulator::Schedule(Seconds(1), SendData, clientSocket);
-    Simulator::Schedule(Seconds(6), SendData, clientSocket); // This should fail, however it sends the message after the channel has been connected to the two netdevices again, see wireshark.
-    Simulator::Schedule(Seconds(9), SendData, clientSocket);
+    // Simulator::Schedule(Seconds(0.001), ConnectSocket, clientSocket, serverAddr, servPort);
+    // Simulator::Schedule(Seconds(1), SendData, clientSocket);
+    // Simulator::Schedule(Seconds(6), SendData, clientSocket); // This should fail, however it sends the message after the channel has been connected to the two netdevices again, see wireshark.
+    // Simulator::Schedule(Seconds(9), SendData, clientSocket);
     
 
     //sourceApps.Start(Seconds(0.0));
@@ -211,7 +205,7 @@ int main(int argc, char* argv[]) {
 
 
     // ========================= TCP CWND TRACE TEST ========================
-    Simulator::Schedule(MilliSeconds(1), &TraceCwnd, groundStations, 1 + satelliteCount, 0);
+    // Simulator::Schedule(MilliSeconds(1), &TraceCwnd, groundStations, 1 + satelliteCount, 0);
 
     // *-*-*-*-* VERY IMPORTANT *-*-*-*-*
     /* The tracer's "NodeList" is the total amount of nodes, because the satellite,
@@ -271,12 +265,12 @@ int main(int argc, char* argv[]) {
     // Run simulationphase at time 0
     simulationPhase(satellites, satelliteMobilityModels, groundStationsMobilityModels);
     // Run simulation phase at i intervals
-    int interval = 60*0.1;
-    for (int i = 1; i < 2; ++i) {
+    int interval = 60*0.25;
+    for (int i = 1; i < 200; ++i) {
         Time t = Seconds(i * interval);
         Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
     }
-
+    
     // Run NetAnim from the P5-Satellite folder
     AnimationInterface anim("scratch/P5-Satellite/p5-satellite.xml");
     // anim.EnablePacketMetadata();
