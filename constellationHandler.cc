@@ -242,3 +242,100 @@ int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex) {
 
     return 0;   // indicating no error
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+============================================================== Pseudocode: ==============================================================
+
+
+----------------------------------------------------------- GS specific -----------------------------------------------------------
+
+For each GS: {              // first for GS's, iterate over each satellite for each GS
+    
+    If (GS_existing_link()) {                               // GS_existing_link() algorithm described below
+        connected_sat = get_conn_sat()                      // get_conn_sat() algorithm described below
+        if (GS_link_valid(GS_node, connected_sat)) {        // GS_link_valid() algorithm described below
+            Skip this GS - link is still valid (continue keyword?)
+        }
+        else {
+            break_link()
+        }
+    }
+    For each satellite:     // if we get here, the GS needs a new link
+        if (GS_link_valid(GS_node, new_sat)) {              // if within range and LOS is fine, make link
+            establish_link(GS_node, new_sat)                // establish_link() algorithm described below
+            break-inner-loop                                // valid link found, stop searching
+        }
+}                                                           // when outer loop is done, both GS's have been allowed to get a link. If no link was findable, we panic
+
+
+
+
+GS_existing_link(GS_node) {
+    Check if there is a channel connected to the GS's netdevice1, which has 2 connected NetDevices. this means a link exists
+    return true/false based on if the link exists
+}
+
+get_conn_sat(GS_node) {  // this function is ONLY called if a link between a GS and Sat exists. Therefore safety is ensured
+
+    Get GS_netdevice -> get channel -> get Netdevices connected to channel -> find satellites connected netdevice.
+    return ns3::Ptr(satNode);       // remember that we know that the satNetDev has index 5, so no need to worry about that
+}
+
+GS_link_valid(GS_node, connected_sat) {     // return a bool telling us whether the link is allowed to exist
+    dist = get distance between GS and Sat
+    azimuth = get azimuth from GS to Sat
+
+    if (dist < 5000 && azimuth > 5) {
+        return true
+    }
+    else {
+        return false
+    }
+
+}
+
+----------------------------------------------------------- GS specific -----------------------------------------------------------
+
+
+
+----------------------------------------------------------- Both for sats and GS's -----------------------------------------------------------
+
+establish_link() {
+    Network guys have this fuction on lock. Make sure to only give it nescessary inputs - no need for entire node_containers or anything like that.
+    We know the NetDevIndexes to be 1 for a GS and 5 for a sat.
+    Distance can be calculated outside of function if nescessary
+    DataRate can be based on distance also? Maybe just hardcoded value or from main somewhere
+}
+
+break_link() {
+    Same story as above
+}
+
+----------------------------------------------------------- Both for sats and GS's -----------------------------------------------------------
+
+
+
+
+
+
+For each satellite
+
+
+
+
+
+
+
+*/
