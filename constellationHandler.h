@@ -19,10 +19,14 @@ NodeContainer createSatellitesFromTLEAndOrbits(uint32_t satelliteCount, std::vec
 // Returns node container with all groundstations, passes groundStationsMobilityModels by reference.
 NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, std::vector<GeoCoordinate> groundStationsCoordinates, Ptr<CsmaChannel> &nullChannel);
 
-// Creates a channel with calculated delay based on distance and the datarate set to 'dataRate'
-void establishLink(Ptr<Node> node1, Ptr<Node> node2, double distanceKM, StringValue dataRate);
+// Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
+// Returns -1 if an error occurs. Returns 0 if not
+int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceKM, StringValue dataRate, Ipv4Address networkAddress);
 
-void destroyLink(Ptr<Node> node1, Ptr<Node> node2, Ptr<CsmaChannel> nullChannel);
+// Destroy the link pointed to by node1's netdevice (specified by index).
+// Makes sure to make all connected netdevices point to the NullChannel, avoiding dangling pointers
+// Returns -1 if an error occurs. Returns 0 if not
+int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex);
 
 // ==================== Satellite specific functions ===================
 void updateInterSatelliteLinks();

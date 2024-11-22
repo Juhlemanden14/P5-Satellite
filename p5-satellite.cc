@@ -76,6 +76,8 @@ void ConnectSocket (Ptr<Socket> &socket, Ipv4Address destAddr, uint16_t destPort
 
 int main(int argc, char* argv[]) {
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
+    LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_ALL);
+    
     Time::SetResolution(Time::NS);
     
     // ========================================= Setup default commandline parameters  =========================================
@@ -98,20 +100,26 @@ int main(int argc, char* argv[]) {
     std::vector<Orbit> OrbitVector;
     std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
     NodeContainer satellites = createSatellitesFromTLEAndOrbits(satelliteCount, satelliteMobilityModels, tleDataPath, tleOrbitsPath, TLEVector, OrbitVector);
-    
+
+    // // DEBUGGING For each node, print the MAC addresses of all its NetDevices (also the loopback)
+    // for (uint32_t i = 0; i < satellites.GetN(); i++){
+    //     Ptr<Node> node = satellites.Get(i);
+    //     for (uint32_t j = 0; j < node->GetNDevices(); j++){
+    //         NS_LOG_UNCOND("Node[" << i << "] NetDevice[" << j << "] - MAC: " << node->GetDevice(j)->GetAddress());
+    //     }
+    // }
 
     std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
     std::vector<GeoCoordinate> groundStationsCoordinates;
 
-
     // -25.8872, 27.7077, 1540 -- Hartebeesthoek, South Africa
     groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
-
     // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
     groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
 
     NodeContainer groundStations = createGroundStations(2, groundStationsMobilityModels, groundStationsCoordinates, nullChannel);
-    NS_LOG_DEBUG("[E] MAC: " << groundStations.Get(1)->GetDevice(1)->GetAddress());
+
+    exit(0);
 
     // ----- REMOVE LATER -----
     // trying to make a new link between the GS's
@@ -126,6 +134,9 @@ int main(int argc, char* argv[]) {
     NS_LOG_DEBUG("[E] Check of testChannel ptr value " << testChannel);
     NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
     NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
+
+
+    
 
 
     // Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
