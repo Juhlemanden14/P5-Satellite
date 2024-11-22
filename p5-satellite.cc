@@ -274,7 +274,7 @@ int main(int argc, char* argv[]) {
     // Run NetAnim from the P5-Satellite folder
     AnimationInterface anim("scratch/P5-Satellite/out/p5-satellite.xml");
     // anim.EnablePacketMetadata();
-    anim.SetBackgroundImage("resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
+    anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
     // Pretty Satellites :)
     for (uint32_t n = 0; n < satellites.GetN(); n++){
         anim.UpdateNodeDescription(n, TLEVector[n].name.substr(TLEVector[n].name.size() - 4,  4));  // Only works for starlink

@@ -1,5 +1,8 @@
 # P5-Satellite
 
+### NetAnim
+ONLY run NetAnim from the ns-3.42 root folder! `ns3-find && netanim`
+
 ### Installing sns-3 properly [14-11-2024]
 Download ns3.40
 ```
