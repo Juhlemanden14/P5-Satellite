@@ -244,9 +244,60 @@ int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex) {
     return 0;   // indicating no error
 }
 
+bool GS_existing_link(Ptr<Node> GSNode) {   
+    if (GSNode->GetDevice(1)->GetChannel()->GetNDevices() == 2) {
+        return true;
+    }
+    return false;
+}
 
 
+Ptr<Node> get_conn_sat(Ptr<Node> GSNode) {
 
+    // hold GS netdevice for reference
+    Ptr<NetDevice> gsNetDev = GSNode->GetDevice(1);
+    for (int n=0; n < 2; n++) {
+        Ptr<NetDevice> netdevice = GSNode->GetDevice(1)->GetChannel()->GetDevice(n);
+        if (gsNetDev != netdevice) {
+            return netdevice->GetNode();
+        }
+    }
+    return GSNode;  // never gets here, but this line makes the compiler happy
+}
+
+
+bool GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel) {
+    double distance = GSMobModel->GetDistanceFrom(satMobModel);     // in meters
+    // calculate the angle between the GS and sat by extruding a triangle with the earths core in ECEF.
+    Vector satPos = satMobModel->GetPosition();             // get ECEF pos for sat
+    Vector gsPos = GSMobModel->GetPosition();               // also in ECEF
+    double satPosMag = satPos.GetLength();                  // in meters
+    double gsPosMag = gsPos.GetLength();                    // in meters
+
+    NS_LOG_DEBUG("distance: " << distance);
+    NS_LOG_DEBUG("satPosMag: " << satPosMag);
+    NS_LOG_DEBUG("gsPosMag: " << gsPosMag);
+
+    /*
+    now we have 3 distances in a triangle. We can now calculate the angle between gs and sat relative to the horizon from
+    the gs (also known as the elevation). This can be done using the law of cosines:
+    cos(A) = (b²+c²-a²) / (2*b*c), where A is the gsPos and a is the sidelength opposite to A 
+    */
+
+    double cosTheta = (pow(gsPosMag, 2) + pow(distance, 2) - pow(satPosMag, 2)) / (2 * gsPosMag * distance);
+    NS_LOG_DEBUG("cosTheta: " << cosTheta);
+
+    double Theta = acos(cosTheta);
+    NS_LOG_DEBUG("Theta: " << Theta);
+    
+    double elevation = (Theta * 180 / pi ) - 90; // convert to degrees and subtract by 90 in order to get the elevation of the GS antenna
+    NS_LOG_DEBUG("Elevation: " << elevation);
+
+    if (elevation > minGSElevation && distance < maxGStoSatDistance) {
+        return true;
+    }
+    else return false;
+}
 
 
 
@@ -330,13 +381,17 @@ break_link() {
 
 
 
+----------------------------------------------------------- Sat specific -----------------------------------------------------------
 
-For each satellite
-
-
-
+For each satellite:
 
 
 
+
+
+
+
+
+----------------------------------------------------------- Sat specific -----------------------------------------------------------
 
 */

@@ -13,6 +13,9 @@
 
 using namespace ns3;
 
+#define maxGStoSatDistance 5000
+#define minGSElevation 5
+
 // Returns node container with all satellites, passes satelliteMobiliyModels and TLEDataVector by reference.
 NodeContainer createSatellitesFromTLEAndOrbits(uint32_t satelliteCount, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::string tleDataPath, std::string tleOrbitsPath, std::vector<TLE> &TLEVector, std::vector<Orbit> &OrbitVector);
 
@@ -44,5 +47,21 @@ bool checkGSLink(int gsIndex,
                  std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
                  NodeContainer &satellites, 
                  double maxDistanceKM);
+
+/**
+Check if there is a channel connected to the GS's netdevice1, which has 2 connected NetDevices. this means a link exists.
+return true/false based on if the link exists
+*/
+bool GS_existing_link(Ptr<Node> GSNode);
+
+/**
+Get the connected satellites node.
+*/
+Ptr<Node> get_conn_sat(Ptr<Node> GSNode);
+
+/**
+return a bool telling us whether the link is allowed to exist or not. This is based on GS elevation angle and distance between sat and GS
+*/
+bool GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
 
 #endif
