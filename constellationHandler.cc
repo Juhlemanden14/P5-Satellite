@@ -115,7 +115,7 @@ NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatCo
     
     gsAddressHelper.Assign(gsNetDevices);
 
-    csmaHelper.EnablePcapAll("satellite", true);
+    csmaHelper.EnablePcapAll("scratch/P5-Satellite/out/ground-station", true);
 
     return groundStations;
 }

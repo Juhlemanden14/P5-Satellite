@@ -236,11 +236,11 @@ int main(int argc, char* argv[]) {
 
 
     // Generate .pcap files from each node
-    csmaHelper.EnablePcapAll("blackboard", true);
+    csmaHelper.EnablePcapAll("scratch/P5-Satellite/Prototype/blackboard", true);
 
-    Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/P5-SatelliteS2.routes", std::ios::out);
+    Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/Prototype/blackboardS2.routes", std::ios::out);
     Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(2), routingStream);
-    Ptr<OutputStreamWrapper> routingStream2 =  Create<OutputStreamWrapper>("scratch/P5-Satellite/P5-SatelliteS6.routes", std::ios::out);
+    Ptr<OutputStreamWrapper> routingStream2 =  Create<OutputStreamWrapper>("scratch/P5-Satellite/Prototype/blackboardS6.routes", std::ios::out);
     Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(6), routingStream2);
 
 
