@@ -78,6 +78,8 @@ int main(int argc, char* argv[]) {
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
     LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_ALL);
     
+
+    Ipv4AddressGenerator::TestMode(); // Needed to avoid address collision. (Simulator issue, not real address collision)
     Time::SetResolution(Time::NS);
     
     // ========================================= Setup default commandline parameters  =========================================
@@ -107,96 +109,156 @@ int main(int argc, char* argv[]) {
     // Setup constellation.
     Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, 2, groundStationsCoordinates);
 
-
-
-    // ----- REMOVE LATER -----
-    // trying to make a new link between the GS's
-    Ptr<CsmaChannel> testChannel = CreateObject<CsmaChannel>();
-    testChannel->SetAttribute("DataRate", StringValue("1MBps"));
-    double delayVal = 3000000.0 / 299792458.0;  // seconds
-    testChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
-    
-    DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(0)->GetDevice(1))->Attach(testChannel);
-    DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(1)->GetDevice(1))->Attach(testChannel);
-
-    NS_LOG_DEBUG("[E] Check of testChannel ptr value " << testChannel);
-    NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << LEOConstellation.groundStationNodes.Get(0)->GetDevice(1)->GetChannel());
-    NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << LEOConstellation.groundStationNodes.Get(1)->GetDevice(1)->GetChannel());
-
-    // Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
-    // for (size_t dv = 0; dv < chan->GetNDevices(); ++dv) {
+    // TESTING ============================================================================
+    Simulator::Schedule(Seconds(0.5), [&LEOConstellation](){
+        Ptr<CsmaChannel> SatGroundChannel = CreateObject<CsmaChannel>();
+        SatGroundChannel->SetAttribute("DataRate", StringValue("1MBps"));
+        double delayVal = 3000000.0 / 299792458.0;  // seconds
+        SatGroundChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
         
-    //     Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(chan->GetDevice(dv));
+        // Attach SAT-GROUND nodes together, groundstation has 1 netdevice, satellite's fifth is always to the groundstation
+        DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(0)->GetDevice(1))->Attach(SatGroundChannel);
+        DynamicCast<CsmaNetDevice>(LEOConstellation.satelliteNodes.Get(0)->GetDevice(5))->Attach(SatGroundChannel);
+    
+        Ptr<Ipv4> satIpv4_0 = LEOConstellation.satelliteNodes.Get(0)->GetObject<Ipv4>();
+        Ptr<Ipv4> gsIpv4_0 = LEOConstellation.groundStationNodes.Get(0)->GetObject<Ipv4>();
         
-    //     // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
-    //     currCsmaNetDevice->Attach(nullChannel);
-    // }
-    // chan->Dispose();
+        Ipv4InterfaceAddress satNewAddr = Ipv4InterfaceAddress(Ipv4Address("10.0.0.2"), Ipv4Mask("255.255.255.0"));
+        satIpv4_0->AddAddress(5, satNewAddr);
+        satIpv4_0->SetUp(5);
+        gsIpv4_0->SetUp(1);
+
+        Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
+    });
     
-    // NS_LOG_DEBUG("[E] Check of theBannedChanel ptr value " << nullChannel);
-    // NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
-    // NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
+    // ===========================================
+    // Attach SAT-SAT
+    Simulator::Schedule(Seconds(0.5), [&LEOConstellation](){
+        Ptr<CsmaChannel> SatSatChannel = CreateObject<CsmaChannel>();
+        SatSatChannel->SetAttribute("DataRate", StringValue("1MBps"));
+        double delayVal = 3000000.0 / 299792458.0;  // seconds
+        SatSatChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
 
-    // ----- REMOVE LATER -----
+        // Attach NORTH and NORTH, just an example
+        DynamicCast<CsmaNetDevice>(LEOConstellation.satelliteNodes.Get(0)->GetDevice(1))->Attach(SatSatChannel);
+        DynamicCast<CsmaNetDevice>(LEOConstellation.satelliteNodes.Get(1)->GetDevice(1))->Attach(SatSatChannel);
 
-    // Testing purposes
-    int lookupIndex = 0;
-    Ptr<Node> t = Names::Find<Node>(LEOConstellation.TLEVector[lookupIndex].name);
-    NS_LOG_DEBUG(LEOConstellation.TLEVector[lookupIndex].name << " coords " << LEOConstellation.satelliteMobilityModels[lookupIndex]->GetGeoPosition());
-    NS_LOG_INFO("[+] SatSGP4 Mobilty installed on " << LEOConstellation.satelliteNodes.GetN() << " satellites");
+        Ptr<Ipv4> satIpv4_0 = LEOConstellation.satelliteNodes.Get(0)->GetObject<Ipv4>();
+        Ptr<Ipv4> satIpv4_1 = LEOConstellation.satelliteNodes.Get(1)->GetObject<Ipv4>();
+        
+        Ipv4InterfaceAddress satNewAddr0 = Ipv4InterfaceAddress(Ipv4Address("15.0.0.1"), Ipv4Mask("255.255.255.0"));
+        Ipv4InterfaceAddress satNewAddr1 = Ipv4InterfaceAddress(Ipv4Address("15.0.0.2"), Ipv4Mask("255.255.255.0"));
+        satIpv4_0->AddAddress(1, satNewAddr0);
+        satIpv4_1->AddAddress(1, satNewAddr1);
+        satIpv4_0->SetUp(1);
+        satIpv4_1->SetUp(1);
 
-    // Testing purposes
-    NS_LOG_DEBUG("GS-0 coords " << LEOConstellation.groundStationsMobilityModels[0]->GetGeoPosition());
-    double gs_sat_dist = LEOConstellation.groundStationsMobilityModels[0]->GetDistanceFrom(LEOConstellation.satelliteMobilityModels[lookupIndex]);
-    NS_LOG_DEBUG("Distance between GS 0 and sat 1 is -> " << gs_sat_dist/1000 << " km");
+        Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
+    });
+    // ===========================================
 
-
-
-    // ----- Testing of TCP between GSs -----
+    Simulator::Schedule(Seconds(0.5), [&LEOConstellation](){
+        Ptr<CsmaChannel> SatGroundChannel = CreateObject<CsmaChannel>();
+        SatGroundChannel->SetAttribute("DataRate", StringValue("1MBps"));
+        double delayVal = 3000000.0 / 299792458.0;  // seconds
+        SatGroundChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
+        
+        // Attach SAT-GROUND nodes together, groundstation has 1 netdevice, satellite's fifth is always to the groundstation
+        DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(1)->GetDevice(1))->Attach(SatGroundChannel);
+        DynamicCast<CsmaNetDevice>(LEOConstellation.satelliteNodes.Get(1)->GetDevice(5))->Attach(SatGroundChannel);
     
-    // // TCP Server receiving data
-    // PacketSinkHelper sink("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), 7777));
-    // ApplicationContainer serverApps = sink.Install(groundStations.Get(0));
-    // serverApps.Start(Seconds(0));
+        Ptr<Ipv4> satIpv4_1 = LEOConstellation.satelliteNodes.Get(1)->GetObject<Ipv4>();
+        Ptr<Ipv4> gsIpv4_1 = LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>();
+        
+        Ipv4InterfaceAddress satNewAddr = Ipv4InterfaceAddress(Ipv4Address("10.0.1.2"), Ipv4Mask("255.255.255.0"));
+        satIpv4_1->AddAddress(5, satNewAddr);
+        satIpv4_1->SetUp(5);
+        gsIpv4_1->SetUp(1);
+
+        Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
+    });
+
     
-    // TCP Client
-    NS_LOG_UNCOND("Server IP: " << LEOConstellation.groundStationNodes.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress());
-    //OnOffHelper onOffHelper("ns3::TcpSocketFactory", InetSocketAddress(groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777));
-    //onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.5]"));
-    //onOffHelper.SetAttribute("PacketSize", UintegerValue(512));
-    
-    //ApplicationContainer clientApps = onOffHelper.Install(groundStations.Get(1));
+    // LINK HANDOVER ==================================================
+    Simulator::Schedule(Seconds(5), [&LEOConstellation](){
+        // Do satellite TLE sim:
+        simulationPhase(LEOConstellation.satelliteNodes, LEOConstellation.satelliteMobilityModels, LEOConstellation.groundStationsMobilityModels);
+
+        // BREAK LINK ========================
+        Ptr<Ipv4> satIpv4_0 = LEOConstellation.satelliteNodes.Get(0)->GetObject<Ipv4>();
+        Ptr<Ipv4> gsIpv4_0 = LEOConstellation.groundStationNodes.Get(0)->GetObject<Ipv4>();
+        // SAT0
+        satIpv4_0->RemoveAddress(5, 0);
+        satIpv4_0->SetDown(5);
+        Ptr<CsmaNetDevice> satCsmaNetDevice0 = DynamicCast<CsmaNetDevice>(satIpv4_0->GetNetDevice(5));
+        Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();
+        satCsmaNetDevice0->Attach(nullChannel);
+        // GROUND0
+        gsIpv4_0->SetDown(1);
+        Ptr<CsmaNetDevice> gsCsmaNetDevice0 = DynamicCast<CsmaNetDevice>(gsIpv4_0->GetNetDevice(1));
+        Ptr<CsmaChannel> nullChannel2 = CreateObject<CsmaChannel>();
+        gsCsmaNetDevice0->Attach(nullChannel2);
+        gsIpv4_0->GetNetDevice(1)->GetChannel()->Dispose();
+        
+        Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
+       
+        // ESTABLISH NEW LINK ==========================
+        // Ptr<Ipv4> gsIpv4_0 = groundStations.Get(0)->GetObject<Ipv4>();
+        Ptr<Ipv4> satIpv4_1 = LEOConstellation.satelliteNodes.Get(1)->GetObject<Ipv4>();
+
+        Ptr<CsmaChannel> SatGroundChannel = CreateObject<CsmaChannel>();
+        SatGroundChannel->SetAttribute("DataRate", StringValue("1MBps"));
+        double delayVal = 3000000.0 / 299792458.0;  // seconds
+        SatGroundChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
+        
+        // Attach SAT-GROUND nodes together, groundstation has 1 netdevice, satellite's fifth is always to the groundstation
+        DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(0)->GetDevice(1))->Attach(SatGroundChannel);
+
+        // GetDevice(2) should be 5 as the satellite only has one gs link, however for testing purposes device 2 is used.
+        DynamicCast<CsmaNetDevice>(LEOConstellation.satelliteNodes.Get(1)->GetDevice(2))->Attach(SatGroundChannel);
+
+        Ipv4InterfaceAddress satNewAddr = Ipv4InterfaceAddress(Ipv4Address("10.0.0.2"), Ipv4Mask("255.255.255.0"));
+        satIpv4_1->AddAddress(2, satNewAddr);
+        satIpv4_1->SetUp(2);
+        gsIpv4_0->SetUp(1);
+
+        Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
+    });
 
     // ========================= TCP CWND TRACE TEST ========================
-    uint16_t servPort = 7777;
+    UdpClientHelper udp(LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777); // Add remote addr and port
+    udp.SetAttribute("Interval", StringValue("100ms"));
+    ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
+    app.Start(Seconds(0.0));
+    app.Stop(Seconds(10.0));
 
-    // Create a sink and install it on the node with index 1.
-    PacketSinkHelper sink("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), servPort));
+    Simulator::Schedule(Seconds(8), [&LEOConstellation](){
+        // DEBUGGING For each node, print the MAC addresses of all its NetDevices (also the loopback)
+        for (uint32_t i = 0; i < LEOConstellation.satelliteNodes.GetN(); i++){
+            NS_LOG_UNCOND("Sat " << i);
+            Ptr<Ipv4> ip = LEOConstellation.satelliteNodes.Get(i)->GetObject<Ipv4>();
+            for (uint32_t j = 0; j < ip->GetNInterfaces(); j++){
+                NS_LOG_UNCOND("     Interface " << j << " with adresses " << ip->GetNAddresses(j));
+                for (uint32_t k = 0; k < ip->GetNAddresses(j); k++)
+                    NS_LOG_UNCOND("     Node[" << i << "] Interface[" << j << "] - IP: " << ip->GetAddress(j, k).GetAddress());
+            }
+        }
+        for (uint32_t i = 0; i < LEOConstellation.groundStationNodes.GetN(); i++){
+            NS_LOG_UNCOND("GS " << i);
+            Ptr<Ipv4> ip = LEOConstellation.groundStationNodes.Get(i)->GetObject<Ipv4>();
+            for (uint32_t j = 0; j < ip->GetNInterfaces(); j++){
+                NS_LOG_UNCOND("     Interface " << j << " with adresses " << ip->GetNAddresses(j));
+                for (uint32_t k = 0; k < ip->GetNAddresses(j); k++)
+                    NS_LOG_UNCOND("     Node[" << i << "] Interface[" << j << "] - IP: " << ip->GetAddress(j, k).GetAddress());
+            }
+        }
+    });
+
+
     
-    ApplicationContainer serverApps = sink.Install(LEOConstellation.groundStationNodes.Get(1));
-    serverApps.Start(Seconds(0.0));
-    serverApps.Stop(Seconds(12.0));
+    Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
+    Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(2), routingStream);
 
-    // Create a source
-    Ipv4Address serverAddr = LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress();
-    BulkSendHelper source("ns3::TcpSocketFactory", InetSocketAddress(serverAddr, servPort));
-    source.SetAttribute("MaxBytes", UintegerValue(4096));
-    source.SetAttribute("SendSize", UintegerValue(1024));
-
-
-    NS_LOG_DEBUG("[E] Created source socket!");
-    // Get socket object
-    Ptr<Socket> clientSocket = Socket::CreateSocket(LEOConstellation.groundStationNodes.Get(0), TcpSocketFactory::GetTypeId());
-    clientSocket->Bind();
-
-    // Simulator::Schedule(Seconds(0.001), ConnectSocket, clientSocket, serverAddr, servPort);
-    // Simulator::Schedule(Seconds(1), SendData, clientSocket);
-    // Simulator::Schedule(Seconds(6), SendData, clientSocket); // This should fail, however it sends the message after the channel has been connected to the two netdevices again, see wireshark.
-    // Simulator::Schedule(Seconds(9), SendData, clientSocket);
-    
-
-    //sourceApps.Start(Seconds(0.0));
-    //sourceApps.Stop(Seconds(12.0));
 
 
     // ========================= TCP CWND TRACE TEST ========================
@@ -211,41 +273,6 @@ int main(int argc, char* argv[]) {
     // --------------------------------------
 
 
-    Simulator::Schedule(Seconds(5), [&LEOConstellation](){
-        Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(LEOConstellation.groundStationNodes.Get(0)->GetDevice(1)->GetChannel());
-        for (size_t device = 0; device < chan->GetNDevices(); ++device) {
-            
-            Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(chan->GetDevice(device));
-            
-            Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();
-            // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
-            currCsmaNetDevice->Attach(nullChannel);
-            LEOConstellation.groundStationNodes.Get(device)->GetObject<Ipv4>()->SetDown(1);
-        }
-        chan->Dispose();
-        
-        NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << LEOConstellation.groundStationNodes.Get(0)->GetDevice(1)->GetChannel());
-        NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << LEOConstellation.groundStationNodes.Get(1)->GetDevice(1)->GetChannel());
-
-        //Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-    });
-
-    Simulator::Schedule(Seconds(7), [&LEOConstellation](){
-        Ptr<CsmaChannel> testChannel = CreateObject<CsmaChannel>();
-        testChannel->SetAttribute("DataRate", StringValue("1MBps"));
-        double delayVal = 3000000.0 / 299792458.0;  // seconds
-        testChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
-
-        DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(0)->GetDevice(1))->Attach(testChannel);
-        DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(1)->GetDevice(1))->Attach(testChannel);
-
-        LEOConstellation.groundStationNodes.Get(0)->GetObject<Ipv4>()->SetUp(1);
-        LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->SetUp(1);
-
-        // Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-    });
-
-
     // ========================================= Setup of NetAnimator mobility =========================================
     // Give each ground station a constant position model, and set the location from the satellite mobility model!
     for (uint32_t n = 0; n < LEOConstellation.groundStationNodes.GetN(); n++) {
@@ -256,7 +283,7 @@ int main(int argc, char* argv[]) {
     // Run simulationphase at time 0
     simulationPhase(LEOConstellation.satelliteNodes, LEOConstellation.satelliteMobilityModels, LEOConstellation.groundStationsMobilityModels);
     // Run simulation phase at i intervals
-    int interval = 60*0.25;
+    int interval = 20*0.25;
     for (int i = 1; i < 200; ++i) {
         Time t = Seconds(i * interval);
         Simulator::Schedule(t, simulationPhase, LEOConstellation.satelliteNodes, LEOConstellation.satelliteMobilityModels, LEOConstellation.groundStationsMobilityModels);
@@ -296,7 +323,7 @@ int main(int argc, char* argv[]) {
     // Ipv4InterfaceContainer interfaces = address.Assign(devices);
 
 
-    Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+    //Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
     NS_LOG_UNCOND("");
     NS_LOG_UNCOND("\x1b[31;1m[!]\x1b[37m Simulation is running!\x1b[0m");

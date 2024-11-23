@@ -37,9 +37,9 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
 
     // For each satellite in the orbits, only grab that from the TLE data
     std::vector<TLE> tmp;
-    for (auto& orbit : this->OrbitVector) {
-        for (auto& name : orbit.satellites) {
-            for (auto& tle : this->TLEVector){
+    for (Orbit orbit : this->OrbitVector) {
+        for (std::string name : orbit.satellites) {
+            for (TLE tle : this->TLEVector){
                 if (name == tle.name)
                     tmp.push_back(tle);
             }
@@ -51,7 +51,7 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
 
 
     // If no amount of satellites is specified, set it to the number of satellites in the orbit TLE data
-    if (this->satelliteCount == 0 || this->satelliteCount > this->TLEVector.size()) {
+    if ( (this->satelliteCount == 0 || this->satelliteCount) > this->TLEVector.size()) {
         this->satelliteCount = this->TLEVector.size(); // Change this if you want to include all satellites from TLE data!
     }
     // LIGE HER
@@ -78,14 +78,27 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
         // Set the simulation absolute start time in string format.
         satMobility->SetStartDate(TLEAge);
 
+
+        // Assign a dummy address to all satellites to give them an interface.
+        Ipv4AddressHelper tmpAddrHelper;
+        tmpAddrHelper.SetBase("1.0.0.0", "255.255.255.0");
+
         // Ignore device with index 0, as it is the loopback interface.
         for (int i = 1; i <= 5; ++i) {
             Ptr<Node> currentSat = satellites.Get(n);
-            Ptr<NetDevice> device = csmaHelper.Install(currentSat).Get(0);   // Installs both a CsmaNetDevice and a Channel for each GS
-            device->GetChannel()->Dispose();   // Delete the channel.
-            // NS_LOG_DEBUG("[E] MAC: " << currentGS->GetDevice(1)->GetAddress());
+            Ptr<Ipv4> satIpv4 = currentSat->GetObject<Ipv4>();
+            // Installs both a CsmaNetDevice and a Channel for each GS
+            Ptr<NetDevice> device = csmaHelper.Install(currentSat).Get(0);
+            // Temporarly assigns IP address to the netdevice, to also get a Ipv4Interface installed
+            tmpAddrHelper.Assign(device);
+            tmpAddrHelper.NewAddress();
+            
+            // Set the Ipv4Interface for this NetDevice down and remove its address
+            satIpv4->SetDown(i);
+            satIpv4->RemoveAddress(i, 0);
 
             // make sure that channel pointer is pointing to the null channel, since channel is now destroyed
+            device->GetChannel()->Dispose();   // Delete the channel.
             Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(device);
             Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();
             currCsmaNetDevice->Attach(nullChannel);
@@ -105,7 +118,7 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
 
 NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> groundStationsCoordinates) {
     
-    NodeContainer groundStations(groundStationCount);
+    NodeContainer groundStations(this->groundStationCount);
 
     InternetStackHelper stackHelper;
     stackHelper.Install(groundStations);
@@ -113,7 +126,7 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
     
     CsmaHelper csmaHelper;
     Ipv4AddressHelper gsAddressHelper;
-    gsAddressHelper.SetBase("1.0.0.0", "255.255.255.0");
+    gsAddressHelper.SetBase("10.0.0.0", "255.255.255.0");
 
     // For each ground station
     for (size_t n = 0; n < groundStationsCoordinates.size(); ++n) {
