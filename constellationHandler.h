@@ -56,17 +56,9 @@ class Constellation {
         void checkImpossibleSatLinks();
 
         // ==================== Ground station speecific =======================
-        void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
-                                      NodeContainer &groundStations, 
-                                      std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
-                                      NodeContainer &satellites);
+        void updateGroundStationLinks();
 
-        bool checkGSLink(int gsIndex, 
-                         std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
-                         NodeContainer &groundStations, 
-                         std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
-                         NodeContainer &satellites, 
-                         double maxDistanceKM);
+        bool checkGSLink(int gsIndex, double maxDistanceKM);
 
         /**
         Check if there is a channel connected to the GS's netdevice1, which has 2 connected NetDevices. this means a link exists.

@@ -261,20 +261,17 @@ int Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex) {
 }
 
 
-void Constellation::updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
-                              NodeContainer &groundStations, 
-                              std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
-                              NodeContainer &satellites) {
-    for (uint32_t gsIndex = 0; gsIndex < groundStations.GetN(); gsIndex++) {
-        Ptr<Node> gs = groundStations.Get(gsIndex);
-        Ptr<SatConstantPositionMobilityModel> gsMobModel = groundStationsMobilityModels[gsIndex];
+void Constellation::updateGroundStationLinks() {
+    for (uint32_t gsIndex = 0; gsIndex < this->groundStationNodes.GetN(); gsIndex++) {
+        Ptr<Node> gs = this->groundStationNodes.Get(gsIndex);
+        Ptr<SatConstantPositionMobilityModel> gsMobModel = this->groundStationsMobilityModels[gsIndex];
         bool linkFound = false;                             // keep track of if any GS does not get a link. That is bad
 
-        if (GS_existing_link(gs)) {                         // if GS has an existing link, get the connected satellite
-            Ptr<Node> connectedSat = get_conn_sat(gs);      // get connected satellites mobility model
+        if (this->GS_existing_link(gs)) {                         // if GS has an existing link, get the connected satellite
+            Ptr<Node> connectedSat = this->get_conn_sat(gs);      // get connected satellites mobility model
             uint32_t satMobModelIndex = connectedSat->GetId();      // get the index of the satellite for use in the mobility model vector
-            Ptr<SatSGP4MobilityModel> satMobModel = satelliteMobilityModels[satMobModelIndex];
-            if (GS_link_valid(gsMobModel, satMobModel)) {   // check if the link is still valid
+            Ptr<SatSGP4MobilityModel> satMobModel = this->satelliteMobilityModels[satMobModelIndex];
+            if (this->GS_link_valid(gsMobModel, satMobModel)) {   // check if the link is still valid
                 NS_LOG_INFO("[+] Link maintained between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
                 linkFound = true;
                 continue;                                   // if still valid, continue to next GS
@@ -284,11 +281,11 @@ void Constellation::updateGroundStationLinks(std::vector<Ptr<SatConstantPosition
                 NS_LOG_INFO("[+] Link destroyed between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
             }
         }
-        for (uint32_t satIndex = 0; satIndex < satellites.GetN(); satIndex++) {
-            Ptr<Node> newSat = satellites.Get(satIndex);    // get the mobility model of the satellite, same procedure as above
+        for (uint32_t satIndex = 0; satIndex < this->satelliteNodes.GetN(); satIndex++) {
+            Ptr<Node> newSat = this->satelliteNodes.Get(satIndex);    // get the mobility model of the satellite, same procedure as above
             uint32_t newSatMobModelIndex = newSat->GetId();
-            Ptr<SatSGP4MobilityModel> newSatMobModel = satelliteMobilityModels[newSatMobModelIndex];
-            if (GS_link_valid(gsMobModel, newSatMobModel)) {    // check if a link from GS to sat could work, if yes establish it and move to next GS
+            Ptr<SatSGP4MobilityModel> newSatMobModel = this->satelliteMobilityModels[newSatMobModelIndex];
+            if (this->GS_link_valid(gsMobModel, newSatMobModel)) {    // check if a link from GS to sat could work, if yes establish it and move to next GS
                 // double distance = gsMobModel->GetDistanceFrom(newSatMobModel);
                 // StringValue dataRate = StringValue("20MBps");   // find an actual dataRate later - TODO
                 // establishLink(gs, 1, newSat, 5, distance, );    // netdevices are always 1 and 5 from GS to sat
