@@ -142,39 +142,41 @@ void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>>
 }
 */
 
-bool checkGSLink(int gsIndex, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, NodeContainer &groundStations, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, NodeContainer &satellites, double maxDistanceKM = 3000) {
+// =========== Outdated function - remove later ==========
+// bool checkGSLink(int gsIndex, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, NodeContainer &groundStations, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, NodeContainer &satellites, double maxDistanceKM = 3000) {
     
-    Ptr<NetDevice> gsNetDevice = groundStations.Get(gsIndex)->GetDevice(0);
-    int attachedChannelNetDevices = groundStations.Get(gsIndex)->GetDevice(0)->GetChannel()->GetNDevices();
+//     Ptr<NetDevice> gsNetDevice = groundStations.Get(gsIndex)->GetDevice(0);
+//     int attachedChannelNetDevices = groundStations.Get(gsIndex)->GetDevice(0)->GetChannel()->GetNDevices();
 
-    if (attachedChannelNetDevices != 2) {
-        return false;
-    }
+//     if (attachedChannelNetDevices != 2) {
+//         return false;
+//     }
 
-    for (int devices = 0; devices < attachedChannelNetDevices; ++devices) {
+//     for (int devices = 0; devices < attachedChannelNetDevices; ++devices) {
 
-        Ptr<NetDevice> attachedChannelDevice = groundStations.Get(gsIndex)->GetDevice(0)->GetChannel()->GetDevice(devices);
+//         Ptr<NetDevice> attachedChannelDevice = groundStations.Get(gsIndex)->GetDevice(0)->GetChannel()->GetDevice(devices);
 
-        // Check if the first netdevice of the channel is the satellite one.
-        if (gsNetDevice != attachedChannelDevice) { // If we enter we know that the 'attachedChannelDevice' is a satellite device.
+//         // Check if the first netdevice of the channel is the satellite one.
+//         if (gsNetDevice != attachedChannelDevice) { // If we enter we know that the 'attachedChannelDevice' is a satellite device.
             
-            // Get the satellite index id, as it is created before the ground stations, we can use its id.
-            int satId = attachedChannelDevice->GetNode()->GetId();
+//             // Get the satellite index id, as it is created before the ground stations, we can use its id.
+//             int satId = attachedChannelDevice->GetNode()->GetId();
             
-            // Check distance between the satellite and the ground station
-            double gsSatDist = groundStationsMobilityModels[gsIndex]->GetDistanceFrom(satelliteMobilityModels[satId]);
-            if ( (gsSatDist/1000) < maxDistanceKM) {
-                // Distance to satellite is in reach to keep the link.
-                return true;
-            } else {
-                // Distance to satellite is too great to keep the connection.
-                return false;
-            }
-        }
-    }
+//             // Check distance between the satellite and the ground station
+//             double gsSatDist = groundStationsMobilityModels[gsIndex]->GetDistanceFrom(satelliteMobilityModels[satId]);
+//             if ( (gsSatDist/1000) < maxDistanceKM) {
+//                 // Distance to satellite is in reach to keep the link.
+//                 return true;
+//             } else {
+//                 // Distance to satellite is too great to keep the connection.
+//                 return false;
+//             }
+//         }
+//     }
 
-    return false;
-}
+//     return false;
+// }
+// =========== Outdated function - remove later ==========
 
 
 int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceKM, StringValue dataRate, Ipv4Address networkAddress) {
@@ -209,7 +211,7 @@ int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int
 
 
 int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex) {
-    if (node1NetDeviceIndex > 5) {  // check if any indexes are out of bounds. GS's must be handled seperately
+    if (node1NetDeviceIndex > 5) {  // check if any indexes are out of bounds. GS's netDeviceIndex is always 1.
         return -1;
     }
     Ptr<CsmaChannel> channelLink = DynamicCast<CsmaChannel>(node1->GetDevice(node1NetDeviceIndex)->GetChannel());  // Get the channel
@@ -244,6 +246,50 @@ int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex) {
     return 0;   // indicating no error
 }
 
+
+void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
+                              NodeContainer &groundStations, 
+                              std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
+                              NodeContainer &satellites) {
+    for (uint32_t gsIndex = 0; gsIndex < groundStations.GetN(); gsIndex++) {
+        Ptr<Node> gs = groundStations.Get(gsIndex);
+        Ptr<SatConstantPositionMobilityModel> gsMobModel = groundStationsMobilityModels[gsIndex];
+        bool linkFound = false;                             // keep track of if any GS does not get a link. That is bad
+
+        if (GS_existing_link(gs)) {                         // if GS has an existing link, get the connected satellite
+            Ptr<Node> connectedSat = get_conn_sat(gs);      // get connected satellites mobility model
+            uint32_t satMobModelIndex = connectedSat->GetId();      // get the index of the satellite for use in the mobility model vector
+            Ptr<SatSGP4MobilityModel> satMobModel = satelliteMobilityModels[satMobModelIndex];
+            if (GS_link_valid(gsMobModel, satMobModel)) {   // check if the link is still valid
+                NS_LOG_INFO("[+] Link maintained between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
+                linkFound = true;
+                continue;                                   // if still valid, continue to next GS
+            }
+            else {                                          // if no longer valid, break the link before making a new one
+                // destroyLink(gs, 1);                      // netDeviceIndex is always 1 for GS's
+                NS_LOG_INFO("[+] Link destroyed between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
+            }
+        }
+        for (uint32_t satIndex = 0; satIndex < satellites.GetN(); satIndex++) {
+            Ptr<Node> newSat = satellites.Get(satIndex);    // get the mobility model of the satellite, same procedure as above
+            uint32_t newSatMobModelIndex = newSat->GetId();
+            Ptr<SatSGP4MobilityModel> newSatMobModel = satelliteMobilityModels[newSatMobModelIndex];
+            if (GS_link_valid(gsMobModel, newSatMobModel)) {    // check if a link from GS to sat could work, if yes establish it and move to next GS
+                // double distance = gsMobModel->GetDistanceFrom(newSatMobModel);
+                // StringValue dataRate = StringValue("20MBps");   // find an actual dataRate later - TODO
+                // establishLink(gs, 1, newSat, 5, distance, );    // netdevices are always 1 and 5 from GS to sat
+                NS_LOG_INFO("[+] Link established between GS " << gsIndex << " and satellite index " << Names::FindName(newSat));
+                linkFound = true;
+                break;                                          // valid link found, move on to next GS
+            }
+        }
+        if (linkFound == false) {                               // display that we have a problem if this is true
+            NS_LOG_INFO("[+] ERROR: GS " << gsIndex << " DID NOT GET A LINK!");
+        }
+    }
+}
+
+
 bool GS_existing_link(Ptr<Node> GSNode) {   
     if (GSNode->GetDevice(1)->GetChannel()->GetNDevices() == 2) {
         return true;
@@ -274,9 +320,9 @@ bool GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4
     double satPosMag = satPos.GetLength();                  // in meters
     double gsPosMag = gsPos.GetLength();                    // in meters
 
-    NS_LOG_DEBUG("distance: " << distance);
-    NS_LOG_DEBUG("satPosMag: " << satPosMag);
-    NS_LOG_DEBUG("gsPosMag: " << gsPosMag);
+    // NS_LOG_DEBUG("distance: " << distance);
+    // NS_LOG_DEBUG("satPosMag: " << satPosMag);
+    // NS_LOG_DEBUG("gsPosMag: " << gsPosMag);
 
     /*
     now we have 3 distances in a triangle. We can now calculate the angle between gs and sat relative to the horizon from
@@ -285,18 +331,22 @@ bool GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4
     */
 
     double cosTheta = (pow(gsPosMag, 2) + pow(distance, 2) - pow(satPosMag, 2)) / (2 * gsPosMag * distance);
-    NS_LOG_DEBUG("cosTheta: " << cosTheta);
+    // NS_LOG_DEBUG("cosTheta: " << cosTheta);
 
     double Theta = acos(cosTheta);
-    NS_LOG_DEBUG("Theta: " << Theta);
+    // NS_LOG_DEBUG("Theta: " << Theta);
     
     double elevation = (Theta * 180 / pi ) - 90; // convert to degrees and subtract by 90 in order to get the elevation of the GS antenna
-    NS_LOG_DEBUG("Elevation: " << elevation);
+    NS_LOG_DEBUG("Elevation: " << elevation << ", distance: " << distance / 1000 << " km");
 
-    if (elevation > minGSElevation && distance < maxGStoSatDistance) {
+    if (elevation > minGSElevation && distance < (maxGStoSatDistance * 1000)) { // compare in meters
+        NS_LOG_DEBUG("link valid: true");
         return true;
     }
-    else return false;
+    else {
+        NS_LOG_DEBUG("link valid: false");
+        return false;
+    }
 }
 
 

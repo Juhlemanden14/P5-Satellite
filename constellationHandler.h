@@ -13,8 +13,8 @@
 
 using namespace ns3;
 
-#define maxGStoSatDistance 5000
-#define minGSElevation 5
+#define maxGStoSatDistance 5000.0
+#define minGSElevation 5.0
 
 // Returns node container with all satellites, passes satelliteMobiliyModels and TLEDataVector by reference.
 NodeContainer createSatellitesFromTLEAndOrbits(uint32_t satelliteCount, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::string tleDataPath, std::string tleOrbitsPath, std::vector<TLE> &TLEVector, std::vector<Orbit> &OrbitVector);
