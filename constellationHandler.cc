@@ -12,39 +12,53 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("P5-Constellation-Handler");
 
-NodeContainer createSatellitesFromTLEAndOrbits(uint32_t satelliteCount, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::string tleDataPath, std::string orbitsDataPath, std::vector<TLE> &TLEVector, std::vector<Orbit> &OrbitVector) {
+// Class constructor.
+Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates) {
+
+    this->satelliteCount = satCount;
+    this->groundStationCount = gsCount;
+
+    // Create the satellites in the constellation.
+    this->satelliteNodes = this->createSatellitesFromTLEAndOrbits(tleDataPath, orbitsDataPath);
+
+    // Create the ground stations in the constellation.
+    this->groundStationNodes = this->createGroundStations(groundStationsCoordinates);
+}
+
+
+NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string orbitsDataPath) {
 
     // Read orbit data
-    OrbitVector = ReadOrbitFile(orbitsDataPath);
-    NS_LOG_INFO("[+] Imported orbit data for " << OrbitVector.size() << " orbits");
+    this->OrbitVector = ReadOrbitFile(orbitsDataPath);
+    NS_LOG_INFO("[+] Imported orbit data for " << this->OrbitVector.size() << " orbits");
 
     std::string TLEAge;
-    TLEVector = ReadTLEFile(tleDataPath, TLEAge);
+    this->TLEVector = ReadTLEFile(tleDataPath, TLEAge);
 
     // For each satellite in the orbits, only grab that from the TLE data
     std::vector<TLE> tmp;
-    for (auto& orbit : OrbitVector) {
+    for (auto& orbit : this->OrbitVector) {
         for (auto& name : orbit.satellites) {
-            for (auto& tle : TLEVector){
+            for (auto& tle : this->TLEVector){
                 if (name == tle.name)
                     tmp.push_back(tle);
             }
         }
     }
-    TLEVector = tmp;
-    NS_LOG_INFO("[+] Imported TLE data for " << TLEVector.size() << " satellites, with age " << TLEAge);
-    NS_ASSERT_MSG(TLEVector.size() != 0, "No satellites were imported?");
+    this->TLEVector = tmp;
+    NS_LOG_INFO("[+] Imported TLE data for " << this->TLEVector.size() << " satellites, with age " << TLEAge);
+    NS_ASSERT_MSG(this->TLEVector.size() != 0, "No satellites were imported?");
 
 
     // If no amount of satellites is specified, set it to the number of satellites in the orbit TLE data
-    if (satelliteCount == 0 || satelliteCount > TLEVector.size()) {
-        satelliteCount = TLEVector.size(); // Change this if you want to include all satellites from TLE data!
+    if (this->satelliteCount == 0 || this->satelliteCount > this->TLEVector.size()) {
+        this->satelliteCount = this->TLEVector.size(); // Change this if you want to include all satellites from TLE data!
     }
     // LIGE HER
 
     // Create satellite nodes
-    NodeContainer satellites(satelliteCount);
-    NS_LOG_INFO("[+] " << satelliteCount << " satellite nodes have been created");
+    NodeContainer satellites(this->satelliteCount);
+    NS_LOG_INFO("[+] " << this->satelliteCount << " satellite nodes have been created");
 
     // Install the internet stack on the satellites
     InternetStackHelper stackHelper;
@@ -55,11 +69,11 @@ NodeContainer createSatellitesFromTLEAndOrbits(uint32_t satelliteCount, std::vec
     
     // Create and aggregate the Satellite SGP4 mobility model to each satellite
     std::string formatted_TLE;
-    for (uint32_t n = 0; n < satelliteCount; ++n) {
+    for (uint32_t n = 0; n < this->satelliteCount; ++n) {
         Ptr<SatSGP4MobilityModel> satMobility = CreateObject<SatSGP4MobilityModel>();
         
         // Format the two lines into a single string for NS-3 compatibility - IT MUST BE line1\nline2 WITH NO SPACES!!!
-        formatted_TLE = TLEVector[n].line1 + "\n" + TLEVector[n].line2; 
+        formatted_TLE = this->TLEVector[n].line1 + "\n" + this->TLEVector[n].line2; 
         satMobility->SetTleInfo(formatted_TLE);
         // Set the simulation absolute start time in string format.
         satMobility->SetStartDate(TLEAge);
@@ -79,17 +93,17 @@ NodeContainer createSatellitesFromTLEAndOrbits(uint32_t satelliteCount, std::vec
         csmaHelper.EnablePcap("scratch/P5-Satellite/out/satellite", satellites, true);
 
         // keep nodes and mobility models seperated - works better with netanimator later on this way.
-        satelliteMobilityModels.emplace_back(satMobility);
+        this->satelliteMobilityModels.emplace_back(satMobility);
 
         // Give each satellite a name equal to the one specified in the TLE data
-        Names::Add(TLEVector[n].name, satellites.Get(n));
+        Names::Add(this->TLEVector[n].name, satellites.Get(n));
     }
 
     return satellites;
 }
 
 
-NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, std::vector<GeoCoordinate> groundStationsCoordinates, Ptr<CsmaChannel> &nullChannel) {
+NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> groundStationsCoordinates) {
     
     NodeContainer groundStations(groundStationCount);
 
@@ -120,7 +134,7 @@ NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatCo
         // make a similar mobility model for GS's even though they don't move. It just allows use of methods like .GetDistanceFrom(GS) etc.
         Ptr<SatConstantPositionMobilityModel> GSMobility = CreateObject<SatConstantPositionMobilityModel>();
         GSMobility->SetGeoPosition(groundStationsCoordinates[n]);
-        groundStationsMobilityModels.emplace_back(GSMobility);
+        this->groundStationsMobilityModels.emplace_back(GSMobility);
     }
     NS_LOG_DEBUG("[+] SatConstantPositionMobilityModel installed on " << groundStations.GetN() << " ground stations");
     csmaHelper.EnablePcap("scratch/P5-Satellite/out/ground-station", groundStations, true);
@@ -179,7 +193,7 @@ void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>>
 // =========== Outdated function - remove later ==========
 
 
-int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceKM, StringValue dataRate, Ipv4Address networkAddress) {
+int Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceKM, StringValue dataRate, Ipv4Address networkAddress) {
     if (node1NetDeviceIndex > 5 || node2NetDeviceIndex > 5) {   // check if any indexes are out of bounds. GS's must be handled seperately
         return -1;
     }
@@ -210,7 +224,7 @@ int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int
 }
 
 
-int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex) {
+int Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex) {
     if (node1NetDeviceIndex > 5) {  // check if any indexes are out of bounds. GS's netDeviceIndex is always 1.
         return -1;
     }
@@ -247,7 +261,7 @@ int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex) {
 }
 
 
-void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
+void Constellation::updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
                               NodeContainer &groundStations, 
                               std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
                               NodeContainer &satellites) {
@@ -290,7 +304,7 @@ void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>>
 }
 
 
-bool GS_existing_link(Ptr<Node> GSNode) {   
+bool Constellation::GS_existing_link(Ptr<Node> GSNode) {   
     if (GSNode->GetDevice(1)->GetChannel()->GetNDevices() == 2) {
         return true;
     }
@@ -298,7 +312,7 @@ bool GS_existing_link(Ptr<Node> GSNode) {
 }
 
 
-Ptr<Node> get_conn_sat(Ptr<Node> GSNode) {
+Ptr<Node> Constellation::get_conn_sat(Ptr<Node> GSNode) {
 
     // hold GS netdevice for reference
     Ptr<NetDevice> gsNetDev = GSNode->GetDevice(1);
@@ -312,7 +326,7 @@ Ptr<Node> get_conn_sat(Ptr<Node> GSNode) {
 }
 
 
-bool GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel) {
+bool Constellation::GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel) {
     double distance = GSMobModel->GetDistanceFrom(satMobModel);     // in meters
     // calculate the angle between the GS and sat by extruding a triangle with the earths core in ECEF.
     Vector satPos = satMobModel->GetPosition();             // get ECEF pos for sat

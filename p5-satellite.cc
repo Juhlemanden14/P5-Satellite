@@ -93,23 +93,10 @@ int main(int argc, char* argv[]) {
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
     // ==========================================================================================================================
     
-    Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();   // a global channel used for netdevices that are not in use. They point to this unusable channel istead of having a dangling pointer
 
-    // ========================================= TLE handling and node Setup =========================================
-    std::vector<TLE> TLEVector;
-    std::vector<Orbit> OrbitVector;
-    std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
-    NodeContainer satellites = createSatellitesFromTLEAndOrbits(satelliteCount, satelliteMobilityModels, tleDataPath, tleOrbitsPath, TLEVector, OrbitVector);
+    // ========================================= Constellation handling and node Setup =========================================
 
-    // // DEBUGGING For each node, print the MAC addresses of all its NetDevices (also the loopback)
-    // for (uint32_t i = 0; i < satellites.GetN(); i++){
-    //     Ptr<Node> node = satellites.Get(i);
-    //     for (uint32_t j = 0; j < node->GetNDevices(); j++){
-    //         NS_LOG_UNCOND("Node[" << i << "] NetDevice[" << j << "] - MAC: " << node->GetDevice(j)->GetAddress());
-    //     }
-    // }
-
-    std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
+    // Ground station coordinates:
     std::vector<GeoCoordinate> groundStationsCoordinates;
 
     // -25.8872, 27.7077, 1540 -- Hartebeesthoek, South Africa
@@ -117,9 +104,10 @@ int main(int argc, char* argv[]) {
     // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
     groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
 
-    NodeContainer groundStations = createGroundStations(2, groundStationsMobilityModels, groundStationsCoordinates, nullChannel);
+    // Setup constellation.
+    Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, 2, groundStationsCoordinates);
 
-    exit(0);
+
 
     // ----- REMOVE LATER -----
     // trying to make a new link between the GS's
@@ -128,16 +116,12 @@ int main(int argc, char* argv[]) {
     double delayVal = 3000000.0 / 299792458.0;  // seconds
     testChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
     
-    DynamicCast<CsmaNetDevice>(groundStations.Get(0)->GetDevice(1))->Attach(testChannel);
-    DynamicCast<CsmaNetDevice>(groundStations.Get(1)->GetDevice(1))->Attach(testChannel);
+    DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(0)->GetDevice(1))->Attach(testChannel);
+    DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(1)->GetDevice(1))->Attach(testChannel);
 
     NS_LOG_DEBUG("[E] Check of testChannel ptr value " << testChannel);
-    NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
-    NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
-
-
-    
-
+    NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << LEOConstellation.groundStationNodes.Get(0)->GetDevice(1)->GetChannel());
+    NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << LEOConstellation.groundStationNodes.Get(1)->GetDevice(1)->GetChannel());
 
     // Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
     // for (size_t dv = 0; dv < chan->GetNDevices(); ++dv) {
@@ -157,13 +141,13 @@ int main(int argc, char* argv[]) {
 
     // Testing purposes
     int lookupIndex = 0;
-    Ptr<Node> t = Names::Find<Node>(TLEVector[lookupIndex].name);
-    NS_LOG_DEBUG(TLEVector[lookupIndex].name << " coords " << satelliteMobilityModels[lookupIndex]->GetGeoPosition());
-    NS_LOG_INFO("[+] SatSGP4 Mobilty installed on " << satellites.GetN() << " satellites");
+    Ptr<Node> t = Names::Find<Node>(LEOConstellation.TLEVector[lookupIndex].name);
+    NS_LOG_DEBUG(LEOConstellation.TLEVector[lookupIndex].name << " coords " << LEOConstellation.satelliteMobilityModels[lookupIndex]->GetGeoPosition());
+    NS_LOG_INFO("[+] SatSGP4 Mobilty installed on " << LEOConstellation.satelliteNodes.GetN() << " satellites");
 
     // Testing purposes
-    NS_LOG_DEBUG("GS-0 coords " << groundStationsMobilityModels[0]->GetGeoPosition());
-    double gs_sat_dist = groundStationsMobilityModels[0]->GetDistanceFrom(satelliteMobilityModels[lookupIndex]);
+    NS_LOG_DEBUG("GS-0 coords " << LEOConstellation.groundStationsMobilityModels[0]->GetGeoPosition());
+    double gs_sat_dist = LEOConstellation.groundStationsMobilityModels[0]->GetDistanceFrom(LEOConstellation.satelliteMobilityModels[lookupIndex]);
     NS_LOG_DEBUG("Distance between GS 0 and sat 1 is -> " << gs_sat_dist/1000 << " km");
 
 
@@ -176,7 +160,7 @@ int main(int argc, char* argv[]) {
     // serverApps.Start(Seconds(0));
     
     // TCP Client
-    NS_LOG_UNCOND("Server IP: " << groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress());
+    NS_LOG_UNCOND("Server IP: " << LEOConstellation.groundStationNodes.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress());
     //OnOffHelper onOffHelper("ns3::TcpSocketFactory", InetSocketAddress(groundStations.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777));
     //onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.5]"));
     //onOffHelper.SetAttribute("PacketSize", UintegerValue(512));
@@ -189,12 +173,12 @@ int main(int argc, char* argv[]) {
     // Create a sink and install it on the node with index 1.
     PacketSinkHelper sink("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), servPort));
     
-    ApplicationContainer serverApps = sink.Install(groundStations.Get(1));
+    ApplicationContainer serverApps = sink.Install(LEOConstellation.groundStationNodes.Get(1));
     serverApps.Start(Seconds(0.0));
     serverApps.Stop(Seconds(12.0));
 
     // Create a source
-    Ipv4Address serverAddr = groundStations.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress();
+    Ipv4Address serverAddr = LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress();
     BulkSendHelper source("ns3::TcpSocketFactory", InetSocketAddress(serverAddr, servPort));
     source.SetAttribute("MaxBytes", UintegerValue(4096));
     source.SetAttribute("SendSize", UintegerValue(1024));
@@ -202,7 +186,7 @@ int main(int argc, char* argv[]) {
 
     NS_LOG_DEBUG("[E] Created source socket!");
     // Get socket object
-    Ptr<Socket> clientSocket = Socket::CreateSocket(groundStations.Get(0), TcpSocketFactory::GetTypeId());
+    Ptr<Socket> clientSocket = Socket::CreateSocket(LEOConstellation.groundStationNodes.Get(0), TcpSocketFactory::GetTypeId());
     clientSocket->Bind();
 
     // Simulator::Schedule(Seconds(0.001), ConnectSocket, clientSocket, serverAddr, servPort);
@@ -226,60 +210,56 @@ int main(int argc, char* argv[]) {
 
     // --------------------------------------
 
-    // ----- scheduling link break and link creation ------
-    Simulator::Schedule(Seconds(5), [&groundStations, nullChannel](){
-        Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(groundStations.Get(0)->GetDevice(1)->GetChannel());
+
+    Simulator::Schedule(Seconds(5), [&LEOConstellation](){
+        Ptr<CsmaChannel> chan = DynamicCast<CsmaChannel>(LEOConstellation.groundStationNodes.Get(0)->GetDevice(1)->GetChannel());
         for (size_t device = 0; device < chan->GetNDevices(); ++device) {
             
             Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(chan->GetDevice(device));
             
+            Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();
             // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
             currCsmaNetDevice->Attach(nullChannel);
-            groundStations.Get(device)->GetObject<Ipv4>()->SetDown(1);
+            LEOConstellation.groundStationNodes.Get(device)->GetObject<Ipv4>()->SetDown(1);
         }
         chan->Dispose();
         
-        NS_LOG_DEBUG("[E] Check of theBannedChanel ptr value " << nullChannel);
-        NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << groundStations.Get(0)->GetDevice(1)->GetChannel());
-        NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << groundStations.Get(1)->GetDevice(1)->GetChannel());
+        NS_LOG_DEBUG("[E] Check of GS 0 conn to testChannel value " << LEOConstellation.groundStationNodes.Get(0)->GetDevice(1)->GetChannel());
+        NS_LOG_DEBUG("[E] Check of GS 1 conn to testChannel value " << LEOConstellation.groundStationNodes.Get(1)->GetDevice(1)->GetChannel());
 
         //Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     });
 
-    Simulator::Schedule(Seconds(7), [&groundStations](){
+    Simulator::Schedule(Seconds(7), [&LEOConstellation](){
         Ptr<CsmaChannel> testChannel = CreateObject<CsmaChannel>();
         testChannel->SetAttribute("DataRate", StringValue("1MBps"));
         double delayVal = 3000000.0 / 299792458.0;  // seconds
         testChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
 
-        DynamicCast<CsmaNetDevice>(groundStations.Get(0)->GetDevice(1))->Attach(testChannel);
-        DynamicCast<CsmaNetDevice>(groundStations.Get(1)->GetDevice(1))->Attach(testChannel);
+        DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(0)->GetDevice(1))->Attach(testChannel);
+        DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(1)->GetDevice(1))->Attach(testChannel);
 
-        groundStations.Get(0)->GetObject<Ipv4>()->SetUp(1);
-        groundStations.Get(1)->GetObject<Ipv4>()->SetUp(1);
+        LEOConstellation.groundStationNodes.Get(0)->GetObject<Ipv4>()->SetUp(1);
+        LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->SetUp(1);
 
         // Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     });
-    // ----------------------------------------------------
-
-
-    // ===============================================================================================================
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
     // Give each ground station a constant position model, and set the location from the satellite mobility model!
-    for (uint32_t n = 0; n < groundStations.GetN(); n++) {
-        GeoCoordinate gsNpos = groundStationsMobilityModels[n]->GetGeoPosition();
-        AnimationInterface::SetConstantPosition(groundStations.Get(n), gsNpos.GetLongitude(), -gsNpos.GetLatitude());
+    for (uint32_t n = 0; n < LEOConstellation.groundStationNodes.GetN(); n++) {
+        GeoCoordinate gsNpos = LEOConstellation.groundStationsMobilityModels[n]->GetGeoPosition();
+        AnimationInterface::SetConstantPosition(LEOConstellation.groundStationNodes.Get(n), gsNpos.GetLongitude(), -gsNpos.GetLatitude());
     }
 
     // Run simulationphase at time 0
-    simulationPhase(satellites, satelliteMobilityModels, groundStationsMobilityModels);
+    simulationPhase(LEOConstellation.satelliteNodes, LEOConstellation.satelliteMobilityModels, LEOConstellation.groundStationsMobilityModels);
     // Run simulation phase at i intervals
     int interval = 60*0.25;
     for (int i = 1; i < 200; ++i) {
         Time t = Seconds(i * interval);
-        Simulator::Schedule(t, simulationPhase, satellites, satelliteMobilityModels, groundStationsMobilityModels);
+        Simulator::Schedule(t, simulationPhase, LEOConstellation.satelliteNodes, LEOConstellation.satelliteMobilityModels, LEOConstellation.groundStationsMobilityModels);
     }
     
     // Run NetAnim from the P5-Satellite folder
@@ -287,17 +267,17 @@ int main(int argc, char* argv[]) {
     // anim.EnablePacketMetadata();
     anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
     // Pretty Satellites :)
-    for (uint32_t n = 0; n < satellites.GetN(); n++){
-        anim.UpdateNodeDescription(n, TLEVector[n].name.substr(TLEVector[n].name.size() - 4,  4));  // Only works for starlink
+    for (uint32_t n = 0; n < LEOConstellation.satelliteNodes.GetN(); n++){
+        anim.UpdateNodeDescription(n, LEOConstellation.TLEVector[n].name.substr(LEOConstellation.TLEVector[n].name.size() - 4,  4));  // Only works for starlink
         anim.UpdateNodeSize(n, 5, 5);
     }
     // Pretty Ground stations
-    for (uint32_t n = 0; n < groundStations.GetN(); n++){
-        anim.UpdateNodeColor(groundStations.Get(n), 0, 255, 255);
-        anim.UpdateNodeSize(groundStations.Get(n), 3, 3);
+    for (uint32_t n = 0; n < LEOConstellation.groundStationNodes.GetN(); n++){
+        anim.UpdateNodeColor(LEOConstellation.groundStationNodes.Get(n), 0, 255, 255);
+        anim.UpdateNodeSize(LEOConstellation.groundStationNodes.Get(n), 3, 3);
     }
-    anim.UpdateNodeDescription(groundStations.Get(0), "Hartebeesthoek");
-    anim.UpdateNodeDescription(groundStations.Get(1), "Tea Gardens");
+    anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(0), "Hartebeesthoek");
+    anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(1), "Tea Gardens");
     // ==================================================================================================================
 
 

@@ -16,52 +16,75 @@ using namespace ns3;
 #define maxGStoSatDistance 5000.0
 #define minGSElevation 5.0
 
-// Returns node container with all satellites, passes satelliteMobiliyModels and TLEDataVector by reference.
-NodeContainer createSatellitesFromTLEAndOrbits(uint32_t satelliteCount, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::string tleDataPath, std::string tleOrbitsPath, std::vector<TLE> &TLEVector, std::vector<Orbit> &OrbitVector);
+class Constellation {
+    public:
+        // Attributes
+        uint32_t satelliteCount;
+        NodeContainer satelliteNodes;
 
-// Returns node container with all groundstations, passes groundStationsMobilityModels by reference.
-NodeContainer createGroundStations(int groundStationCount, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, std::vector<GeoCoordinate> groundStationsCoordinates, Ptr<CsmaChannel> &nullChannel);
+        std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
+        std::vector<TLE> TLEVector;
+        std::vector<Orbit> OrbitVector;
+        
 
-// Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
-// Returns -1 if an error occurs. Returns 0 if not
-int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceKM, StringValue dataRate, Ipv4Address networkAddress);
+        uint32_t groundStationCount;
+        NodeContainer groundStationNodes;
 
-// Destroy the link pointed to by node1's netdevice (specified by index).
-// Makes sure to make all connected netdevices point to the NullChannel, avoiding dangling pointers
-// Returns -1 if an error occurs. Returns 0 if not
-int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex);
+        std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
 
-// ==================== Satellite specific functions ===================
-void updateInterSatelliteLinks();
-void checkImpossibleSatLinks();
+        // Constructor declaration
+        Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates);
 
-// ==================== Ground station speecific =======================
-void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
-                              NodeContainer &groundStations, 
-                              std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
-                              NodeContainer &satellites);
+        // Returns node container with all satellites, passes satelliteMobiliyModels.
+        NodeContainer createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string tleOrbitsPath);
 
-bool checkGSLink(int gsIndex, 
-                 std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
-                 NodeContainer &groundStations, 
-                 std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
-                 NodeContainer &satellites, 
-                 double maxDistanceKM);
+        // Returns node container with all groundstations, passes groundStationsMobilityModels by reference.
+        NodeContainer createGroundStations(std::vector<GeoCoordinate> groundStationsCoordinates);
 
-/**
-Check if there is a channel connected to the GS's netdevice1, which has 2 connected NetDevices. this means a link exists.
-return true/false based on if the link exists
-*/
-bool GS_existing_link(Ptr<Node> GSNode);
+    private:
+        // Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
+        // Returns -1 if an error occurs. Returns 0 if not
+        int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceKM, StringValue dataRate, Ipv4Address networkAddress);
 
-/**
-Get the connected satellites node.
-*/
-Ptr<Node> get_conn_sat(Ptr<Node> GSNode);
+        // Destroy the link pointed to by node1's netdevice (specified by index).
+        // Makes sure to make all connected netdevices point to the NullChannel, avoiding dangling pointers
+        // Returns -1 if an error occurs. Returns 0 if not
+        int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex);
 
-/**
-return a bool telling us whether the link is allowed to exist or not. This is based on GS elevation angle and distance between sat and GS
-*/
-bool GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
+        // ==================== Satellite specific functions ===================
+        void updateInterSatelliteLinks();
+        void checkImpossibleSatLinks();
+
+        // ==================== Ground station speecific =======================
+        void updateGroundStationLinks(std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
+                                      NodeContainer &groundStations, 
+                                      std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
+                                      NodeContainer &satellites);
+
+        bool checkGSLink(int gsIndex, 
+                         std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels, 
+                         NodeContainer &groundStations, 
+                         std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, 
+                         NodeContainer &satellites, 
+                         double maxDistanceKM);
+
+        /**
+        Check if there is a channel connected to the GS's netdevice1, which has 2 connected NetDevices. this means a link exists.
+        return true/false based on if the link exists
+        */
+        bool GS_existing_link(Ptr<Node> GSNode);
+
+        /**
+        Get the connected satellites node.
+        */
+        Ptr<Node> get_conn_sat(Ptr<Node> GSNode);
+
+        /**
+        return a bool telling us whether the link is allowed to exist or not. This is based on GS elevation angle and distance between sat and GS
+        */
+        bool GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
+
+};
+
 
 #endif
