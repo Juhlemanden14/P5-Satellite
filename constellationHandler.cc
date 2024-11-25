@@ -29,6 +29,23 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
 
     // Set satellite address helper, which is used to assign them Ipv4Addresses
     this->satAddressHelper.SetBase(Ipv4Address("2.0.0.0"), Ipv4Mask("255.255.255.0"));
+
+    // DEMO DELETE LATER =====================================
+    std::pair<Ipv4Address, Ipv4Address> dummy = this->getLinkAddressPair(); // Gets 2.0.1.1, 2.0.1.2
+
+    this->reclaimLinkAddressPair(dummy.first, dummy.second);
+
+    NS_LOG_DEBUG("Addr1: " << dummy.first << ", Addr2: " << dummy.second); 
+
+    dummy = this->getLinkAddressPair(); // Gets 2.0.1.1, 2.0.1.2
+
+    NS_LOG_DEBUG("Addr1: " << dummy.first << ", Addr2: " << dummy.second);
+
+    dummy = this->getLinkAddressPair(); // Gets 2.0.2.1, 2.0.2.2
+
+    NS_LOG_DEBUG("Addr1: " << dummy.first << ", Addr2: " << dummy.second);
+    // DEMO DELETE LATER =====================================
+
 }
 
 NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string orbitsDataPath) {
@@ -404,3 +421,51 @@ void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, LinkTy
     return;   // indicating no error
 }
 
+// Get an address subnet pair for an inter satellite link.
+std::pair<Ipv4Address, Ipv4Address> Constellation::getLinkAddressPair() {
+
+    // Link address pair to return.
+    std::pair<Ipv4Address, Ipv4Address> linkPair;
+
+    // If this is zero, we generate a new address pair.
+    if (this->linkAddressProvider.size() == 0) {
+
+        Ipv4Address address = Ipv4Address("0.0.0.1");
+        uint8_t addr[4] = {0, 0, 0, 1};
+        address.Serialize(addr);
+
+        // Set the new address
+        addr[0] = 2+floor(this->linkSubnetCounter/(256*256));
+        addr[1] = floor(this->linkSubnetCounter/256);
+        addr[2] = 1+this->linkSubnetCounter;
+
+        // Increment the subnet counter so we do not reuse a subnet.
+        this->linkSubnetCounter++;
+
+        linkPair.first = address.Deserialize(addr);
+        addr[3]++;
+        linkPair.second = address.Deserialize(addr);
+
+        //this->linkAddressProvider.push();
+
+        return linkPair;
+    }
+
+    // Logical else 
+
+    // Get link pair from the linkAddressProvider, and dequeue that link pair.
+    linkPair = linkAddressProvider.front();
+    linkAddressProvider.pop();
+
+    return linkPair;
+}
+
+void Constellation::reclaimLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Address linkAddress_1) {
+    // Construct link address pair
+    std::pair<Ipv4Address, Ipv4Address> linkAddressPair;
+    linkAddressPair.first = linkAddress_0;
+    linkAddressPair.second = linkAddress_1;
+
+    // Reclaim the link address.
+    this->linkAddressProvider.push(linkAddressPair);
+}

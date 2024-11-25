@@ -55,6 +55,16 @@ class Constellation {
             SAT_SAT
         } LinkType;
 
+        // Queue for providing ipv4 addresses for inter satellite links.
+        std::queue< std::pair<Ipv4Address, Ipv4Address> > linkAddressProvider;
+        int linkSubnetCounter = 0;
+
+        // Method for getting an address subnet pair for an inter satellite link.
+        std::pair<Ipv4Address, Ipv4Address> getLinkAddressPair();
+
+        // Method for reclaiming a previously used address.
+        void reclaimLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Address linkAddress_1);
+
         // Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
         // If used on a GS-sat link, GSnode should always be before satNode in parameters
         // If link type is gs-sat, satellite is assigned an IP on the same subnet as the GS's already existing IP address
