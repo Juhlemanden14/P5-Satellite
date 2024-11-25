@@ -83,12 +83,12 @@ class Constellation {
         /**
         Get the connected satellites node.
         */
-        Ptr<Node> get_conn_sat(Ptr<Node> GSNode);
+        Ptr<Node> GS_get_connected_sat(Ptr<Node> GSNode);
 
         /**
         return a bool telling us whether the link is allowed to exist or not. This is based on GS elevation angle and distance between sat and GS
         */
-        bool GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
+        bool GS_is_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
 
 };
 

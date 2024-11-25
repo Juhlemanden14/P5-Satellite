@@ -18,32 +18,16 @@ NS_LOG_COMPONENT_DEFINE("P5-Satellite");
 // $ cd ns-3.42
 
 
-// // Function to schedule a position update. If verbose is set to true, it prints the new position
-// void SchedulePositionUpdate(Ptr<SatSGP4MobilityModel> satMobility, Time t, bool verbose) {
-//     Simulator::Schedule(t, [satMobility, t, verbose](){
-//         // Retrieve the satellite's position at this time
-//         GeoCoordinate pos = satMobility->GetGeoPosition();
-//         if (verbose) {
-//             std::cout << "Time: " << t.GetSeconds() << " sec, Position: ("
-//                       << pos.GetLongitude() << ", " << pos.GetLatitude() << ", "
-//                       << pos.GetAltitude() << ")" << std::endl;
-//         }
-//     });
-// }
-
-// DEBUG
+// CongestionWindow Trace methods
 static void CwndTracer(uint32_t oldval, uint32_t newval) {
     NS_LOG_UNCOND( "CWND at sim time:" << Simulator::Now().GetSeconds() << "s, CWND:" << oldval << " --> " << newval);
 }
-
-
 void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
-
     NS_LOG_UNCOND("CW Window traced Node id: " << nodeId << " socketid: " << socketId);
-
     Config::ConnectWithoutContext("/NodeList/" + std::to_string(nodeId) + "/$ns3::TcpL4Protocol/SocketList/" + std::to_string(socketId) + "/CongestionWindow", MakeBoundCallback(&CwndTracer));
 }
 
+// Custom socket functions. Delete?
 void SendData (Ptr<Socket> &socket) {
     static const uint32_t writeSize = 1040;
     uint8_t data[writeSize];
@@ -54,11 +38,12 @@ void SendData (Ptr<Socket> &socket) {
     }
     socket->Send(&data[0], writeSize, 0);
 }
-
 void ConnectSocket (Ptr<Socket> &socket, Ipv4Address destAddr, uint16_t destPort) {
     // Connect source to sink.
     socket->Connect(InetSocketAddress(destAddr, destPort));
 }
+
+
 
 int main(int argc, char* argv[]) {
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
@@ -81,10 +66,8 @@ int main(int argc, char* argv[]) {
     
 
     // ========================================= Constellation handling and node Setup =========================================
-
     // Ground station coordinates:
     std::vector<GeoCoordinate> groundStationsCoordinates;
-
     // -25.8872, 27.7077, 1540 -- Hartebeesthoek, South Africa
     groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
     // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
@@ -95,9 +78,13 @@ int main(int argc, char* argv[]) {
     // Setup constellation.
     Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, groundStationsCoordinates.size(), groundStationsCoordinates);
 
-    // TESTING ============================================================================
+
+
+
+
+
+    // ============================== TESTING ==============================
     
-    // ===========================================
     // Attach SAT-SAT
     // Simulator::Schedule(Seconds(0.5), [&LEOConstellation](){
     //     Ptr<CsmaChannel> SatSatChannel = CreateObject<CsmaChannel>();
@@ -132,7 +119,7 @@ int main(int argc, char* argv[]) {
     // ===========================================
 
     
-    // LINK HANDOVER ==================================================
+    // ============================== LINK HANDOVER ==============================
     // Simulator::Schedule(Seconds(5), [&LEOConstellation](){
 
     //     // BREAK LINK =======================
@@ -176,15 +163,6 @@ int main(int argc, char* argv[]) {
     //     Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
     // });
 
-    // ========================= TCP CWND TRACE TEST ========================
-    UdpClientHelper udp(LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777); // Add remote addr and port
-    udp.SetAttribute("Interval", StringValue("500ms"));
-    ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
-    app.Start(Seconds(1.0));
-    app.Stop(Seconds(15.0));
-
-
-
     // Simulator::Schedule(Seconds(8), [&LEOConstellation](){
     //     // DEBUGGING For each node, print the MAC addresses of all its NetDevices (also the loopback)
     //     for (uint32_t i = 0; i < LEOConstellation.satelliteNodes.GetN(); i++){
@@ -207,6 +185,16 @@ int main(int argc, char* argv[]) {
     //     }
     // });
 
+
+
+
+
+    // ============================== APPLICATIONS ==============================
+    UdpClientHelper udp(LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777); // Add remote addr and port
+    udp.SetAttribute("Interval", StringValue("500ms"));
+    ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
+    app.Start(Seconds(1.0));
+    app.Stop(Seconds(15.0));
 
     
     Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
@@ -254,24 +242,7 @@ int main(int argc, char* argv[]) {
     anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(0), "Hartebeesthoek");
     anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(1), "Tea Gardens");
     // ==================================================================================================================
-
-
-    // PointToPointHelper pointToPoint;
-    // pointToPoint.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
-    // pointToPoint.SetChannelAttribute("Delay", StringValue("2ms"));
-
-    // NetDeviceContainer devices;
-    // devices = pointToPoint.Install(nodes);
-
-    // InternetStackHelper stack;
-    // stack.Install(nodes);
-
-    // Ipv4AddressHelper address;
-    // address.SetBase("10.1.1.0", "255.255.255.0");
-    // Ipv4InterfaceContainer interfaces = address.Assign(devices);
-
-
-    //Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+    
 
     NS_LOG_UNCOND("");
     NS_LOG_UNCOND("\x1b[31;1m[!]\x1b[37m Simulation is running!\x1b[0m");
