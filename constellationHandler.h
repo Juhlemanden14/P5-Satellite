@@ -57,6 +57,8 @@ class Constellation {
 
         // Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
         // If used on a GS-sat link, GSnode should always be before satNode in parameters
+        // If link type is gs-sat, satellite is assigned an IP on the same subnet as the GS's already existing IP address
+        // If link type is sat-sat, they are both assigned an arbitrary IP address
         void establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceM, StringValue dataRate, LinkType linkType);
 
         // Destroy the link pointed to by node1's netdevice (specified by index).

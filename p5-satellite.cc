@@ -99,32 +99,36 @@ int main(int argc, char* argv[]) {
     
     // ===========================================
     // Attach SAT-SAT
-    Simulator::Schedule(Seconds(0.5), [&LEOConstellation](){
-        Ptr<CsmaChannel> SatSatChannel = CreateObject<CsmaChannel>();
-        SatSatChannel->SetAttribute("DataRate", StringValue("1MBps"));
-        double delayVal = 3000000.0 / 299792458.0;  // seconds
-        SatSatChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
+    // Simulator::Schedule(Seconds(0.5), [&LEOConstellation](){
+    //     Ptr<CsmaChannel> SatSatChannel = CreateObject<CsmaChannel>();
+    //     SatSatChannel->SetAttribute("DataRate", StringValue("1MBps"));
+    //     double delayVal = 3000000.0 / 299792458.0;  // seconds
+    //     SatSatChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
 
 
-        Ptr<Node> sat0 = Names::Find<Node>("STARLINK-30159");
-        Ptr<Node> sat1 = Names::Find<Node>("STARLINK-5748");
+    //     Ptr<Node> sat0 = Names::Find<Node>("STARLINK-30159");
+    //     Ptr<Node> sat1 = Names::Find<Node>("STARLINK-5748");
 
-        // Attach NORTH and NORTH, just an example
-        DynamicCast<CsmaNetDevice>(sat0->GetDevice(1))->Attach(SatSatChannel);
-        DynamicCast<CsmaNetDevice>(sat1->GetDevice(1))->Attach(SatSatChannel);
+    //     // Attach NORTH and NORTH, just an example
+    //     DynamicCast<CsmaNetDevice>(sat0->GetDevice(1))->Attach(SatSatChannel);
+    //     DynamicCast<CsmaNetDevice>(sat1->GetDevice(1))->Attach(SatSatChannel);
 
-        Ptr<Ipv4> satIpv4_0 = sat0->GetObject<Ipv4>();
-        Ptr<Ipv4> satIpv4_1 = sat1->GetObject<Ipv4>();
+    //     Ptr<Ipv4> satIpv4_0 = sat0->GetObject<Ipv4>();
+    //     Ptr<Ipv4> satIpv4_1 = sat1->GetObject<Ipv4>();
         
-        Ipv4InterfaceAddress satNewAddr0 = Ipv4InterfaceAddress(Ipv4Address("2.0.0.1"), Ipv4Mask("255.255.255.0"));
-        Ipv4InterfaceAddress satNewAddr1 = Ipv4InterfaceAddress(Ipv4Address("2.0.0.2"), Ipv4Mask("255.255.255.0"));
-        satIpv4_0->AddAddress(1, satNewAddr0);
-        satIpv4_1->AddAddress(1, satNewAddr1);
-        satIpv4_0->SetUp(1);
-        satIpv4_1->SetUp(1);
+    //     // Ipv4InterfaceAddress satNewAddr0 = Ipv4InterfaceAddress(Ipv4Address("2.0.0.1"), Ipv4Mask("255.255.255.0"));
+    //     // Ipv4InterfaceAddress satNewAddr1 = Ipv4InterfaceAddress(Ipv4Address("2.0.0.2"), Ipv4Mask("255.255.255.0"));
+    //     Ipv4AddressHelper tmp("2.0.0.0", "255.255.255.0");
+    //     tmp.Assign(NetDeviceContainer(sat0->GetDevice(1), sat1->GetDevice(1)));
 
-        Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
-    });
+
+    //     // satIpv4_0->AddAddress(1, satNewAddr0);
+    //     // satIpv4_1->AddAddress(1, satNewAddr1);
+    //     // satIpv4_0->SetUp(1);
+    //     // satIpv4_1->SetUp(1);
+
+    //     Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
+    // });
     // ===========================================
 
     
@@ -224,6 +228,7 @@ int main(int argc, char* argv[]) {
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
     LEOConstellation.simulationLoop(0, 15);
+
 
     // ========================================= Setup of NetAnimator mobility =========================================
     // Give each ground station a constant position model, and set the location from the satellite mobility model!

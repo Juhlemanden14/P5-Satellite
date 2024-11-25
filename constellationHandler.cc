@@ -178,6 +178,12 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
             this->updateConstellation();
         });
     }
+
+
+    // TESTING
+    Ptr<Node> sat0 = Names::Find<Node>("STARLINK-30159");
+    Ptr<Node> sat1 = Names::Find<Node>("STARLINK-5748");
+    this->establishLink(sat0, 1, sat1, 1, 3000000, StringValue("20MBps"), SAT_SAT);
 }
 
 void Constellation::updateConstellation() {
@@ -309,37 +315,40 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
     // Attach nodes to the same csma channel.
     DynamicCast<CsmaNetDevice>(node1->GetDevice(node1NetDeviceIndex))->Attach(channel);
     DynamicCast<CsmaNetDevice>(node2->GetDevice(node2NetDeviceIndex))->Attach(channel);
-
     
     Ptr<Ipv4> ipv4_1 = node1->GetObject<Ipv4>();
     Ptr<Ipv4> ipv4_2 = node2->GetObject<Ipv4>();
     ipv4_1->SetUp(node1NetDeviceIndex);
     ipv4_2->SetUp(node2NetDeviceIndex);
     
-    if (linkType == GS_SAT) {   // GS must keep its IP
+
+    if (linkType == GS_SAT) {
+        // Get IP address of ground station
         Ipv4Address gsIP = ipv4_1->GetAddress(node1NetDeviceIndex, 0).GetAddress(); // will give us either 10.0.0.1 or 10.0.1.1
         
-        NS_LOG_DEBUG("Groundstation current IP: " << gsIP);
-
+        // Increment ground stations IP with one, which becomes the new satellite address
         uint8_t ipAsInt[4] = {0, 0, 0, 0};
         gsIP.Serialize(ipAsInt);
         ipAsInt[3]++;
         Ipv4Address satNewIP = gsIP.Deserialize(ipAsInt);
-        
-        
-        NS_LOG_DEBUG("GS_SAT Satellite ip: " << satNewIP);
 
-        // Set the satellites 
+        // Set the IP of the satellite
         Ipv4InterfaceAddress satNewAddr = Ipv4InterfaceAddress(satNewIP, Ipv4Mask("255.255.255.0"));
         ipv4_2->AddAddress(node2NetDeviceIndex, satNewAddr);
+
+        NS_LOG_DEBUG("Groundstation current IP: " << gsIP << " -> New Satellite IP: " << satNewIP);
     }
     else if (linkType == SAT_SAT) {      // linkType = SAT_SAT
-        NS_LOG_DEBUG("SAT_SAT being established. Not implemented yet");
+        Ipv4InterfaceAddress satNewAddr0 = Ipv4InterfaceAddress(Ipv4Address("2.0.0.1"), Ipv4Mask("255.255.255.0"));
+        Ipv4InterfaceAddress satNewAddr1 = Ipv4InterfaceAddress(Ipv4Address("2.0.0.2"), Ipv4Mask("255.255.255.0"));
+        ipv4_1->AddAddress(node1NetDeviceIndex, satNewAddr0);
+        ipv4_2->AddAddress(node2NetDeviceIndex, satNewAddr1);
 
+        // // ALTERNATIVE WAY TO ASSIGN IP ADDRESSES TO SATELLITES
+        // NetDeviceContainer tmp = NetDeviceContainer(node1->GetDevice(node1NetDeviceIndex), node2->GetDevice(node2NetDeviceIndex));
+        // this->satAddressHelper.Assign(tmp);
+        // this->satAddressHelper.NewNetwork();
     }
-
-    // Ipv4InterfaceAddress satNewAddr = Ipv4InterfaceAddress(Ipv4Address("10.0.0.2"), Ipv4Mask("255.255.255.0"));
-    // ipv4_1->AddAddress(5, satNewAddr);
 
     Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
     NS_LOG_DEBUG("Routing tables have been recomputed");
