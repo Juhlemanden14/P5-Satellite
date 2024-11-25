@@ -26,10 +26,12 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
 
     // Create the ground stations in the constellation.
     this->groundStationNodes = this->createGroundStations(groundStationsCoordinates);
+
+    // Set satellite address helper, which is used to assign them Ipv4Addresses
+    this->satAddressHelper.SetBase(Ipv4Address("2.0.0.0"), Ipv4Mask("255.255.255.0"));
 }
 
 NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string orbitsDataPath) {
-
     // Read orbit data
     this->OrbitVector = ReadOrbitFile(orbitsDataPath);
     NS_LOG_INFO("[+] Imported orbit data for " << this->OrbitVector.size() << " orbits");
@@ -83,7 +85,8 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
 
         // Assign a dummy address to all satellites to give them an interface.
         Ipv4AddressHelper tmpAddrHelper;
-        tmpAddrHelper.SetBase("1.0.0.0", "255.255.255.0");
+        tmpAddrHelper.SetBase("2.0.0.0", "255.255.255.0");
+        // tmpAddrHelper.Assign()
 
         // Ignore device with index 0, as it is the loopback interface.
         for (int i = 1; i <= 5; ++i) {
@@ -93,7 +96,7 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
             Ptr<NetDevice> device = csmaHelper.Install(currentSat).Get(0);
             // Temporarly assigns IP address to the netdevice, to also get a Ipv4Interface installed
             tmpAddrHelper.Assign(device);
-            tmpAddrHelper.NewAddress();
+            //tmpAddrHelper.NewAddress();
             
             // Set the Ipv4Interface for this NetDevice down and remove its address
             satIpv4->SetDown(i);
@@ -128,10 +131,10 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
     
     CsmaHelper csmaHelper;
     Ipv4AddressHelper gsAddressHelper;
-    gsAddressHelper.SetBase("10.0.0.0", "255.255.255.0");
+    gsAddressHelper.SetBase("1.0.0.0", "255.255.255.0");
 
     // For each ground station
-    for (size_t n = 0; n < groundStationsCoordinates.size(); ++n) {
+    for (size_t n = 0; n < this->groundStationCount; ++n) {
         // Create the single netdevice on each ground station
         NetDeviceContainer gsNetDevice = csmaHelper.Install(groundStations.Get(n));
         // Assign an ip to the ground station but turn the interface down!
@@ -188,9 +191,6 @@ void Constellation::updateConstellation() {
     this->updateGroundStationLinks();
 
     // NS_LOG_DEBUG("[->] Simulation at second " << Simulator::Now().GetSeconds());    // Gets the elapsed seconds in the simulation
-    
-    
-
 }
 
 
@@ -326,16 +326,16 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
         ipAsInt[3]++;
         Ipv4Address satNewIP = gsIP.Deserialize(ipAsInt);
         
+        
         NS_LOG_DEBUG("GS_SAT Satellite ip: " << satNewIP);
 
         // Set the satellites 
         Ipv4InterfaceAddress satNewAddr = Ipv4InterfaceAddress(satNewIP, Ipv4Mask("255.255.255.0"));
         ipv4_2->AddAddress(node2NetDeviceIndex, satNewAddr);
-
-
     }
     else if (linkType == SAT_SAT) {      // linkType = SAT_SAT
         NS_LOG_DEBUG("SAT_SAT being established. Not implemented yet");
+
     }
 
     // Ipv4InterfaceAddress satNewAddr = Ipv4InterfaceAddress(Ipv4Address("10.0.0.2"), Ipv4Mask("255.255.255.0"));
@@ -414,98 +414,3 @@ void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, LinkTy
     return;   // indicating no error
 }
 
-
-
-
-
-
-
-
-/*destroyLink
-============================================================== Pseudocode: ==============================================================
-
-
------------------------------------------------------------ GS specific -----------------------------------------------------------
-
-For each GS: {              // first for GS's, iterate over each satellite for each GS
-    
-    If (GS_existing_link()) {                               // GS_existing_link() algorithm described below
-        connected_sat = get_conn_sat()                      // get_conn_sat() algorithm described below
-        if (GS_link_valid(GS_node, connected_sat)) {        // GS_link_valid() algorithm described below
-            Skip this GS - link is still valid (continue keyword?)
-        }
-        else {
-            break_link()
-        }
-    }
-    For each satellite:     // if we get here, the GS needs a new link
-        if (GS_link_valid(GS_node, new_sat)) {              // if within range and LOS is fine, make link
-            establish_link(GS_node, new_sat)                // establish_link() algorithm described below
-            break-inner-loop                                // valid link found, stop searching
-        }
-}                                                           // when outer loop is done, both GS's have been allowed to get a link. If no link was findable, we panic
-
-
-
-
-GS_existing_link(GS_node) {
-    Check if there is a channel connected to the GS's netdevice1, which has 2 connected NetDevices. this means a link exists
-    return true/false based on if the link exists
-}
-
-get_conn_sat(GS_node) {  // this function is ONLY called if a link between a GS and Sat exists. Therefore safety is ensured
-
-    Get GS_netdevice -> get channel -> get Netdevices connected to channel -> find satellites connected netdevice.
-    return ns3::Ptr(satNode);       // remember that we know that the satNetDev has index 5, so no need to worry about that
-}
-
-GS_link_valid(GS_node, connected_sat) {     // return a bool telling us whether the link is allowed to exist
-    dist = get distance between GS and Sat
-    azimuth = get azimuth from GS to Sat
-
-    if (dist < 5000 && azimuth > 5) {
-        return true
-    }
-    else {
-        return false
-    }
-
-}
-
------------------------------------------------------------ GS specific -----------------------------------------------------------
-
-
-
------------------------------------------------------------ Both for sats and GS's -----------------------------------------------------------
-
-establish_link() {
-    Network guys have this fuction on lock. Make sure to only give it nescessary inputs - no need for entire node_containers or anything like that.
-    We know the NetDevIndexes to be 1 for a GS and 5 for a sat.
-    Distance can be calculated outside of function if nescessary
-    DataRate can be based on distance also? Maybe just hardcoded value or from main somewhere
-}
-
-break_link() {
-    Same story as above
-}
-
------------------------------------------------------------ Both for sats and GS's -----------------------------------------------------------
-
-
-
-
-
------------------------------------------------------------ Sat specific -----------------------------------------------------------
-
-For each satellite:
-
-
-
-
-
-
-
-
------------------------------------------------------------ Sat specific -----------------------------------------------------------
-
-*/

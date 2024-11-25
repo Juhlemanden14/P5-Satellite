@@ -22,16 +22,18 @@ class Constellation {
         std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
         std::vector<TLE> TLEVector;
         std::vector<Orbit> OrbitVector;
-
-        double maxGStoSatDistance = 5000.0;
-        double minGSElevation = 5.0;
-        double c = 299792458.0; // speed of light (m/s)
         
 
         uint32_t groundStationCount;
         NodeContainer groundStationNodes;
-
+        
         std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
+
+        double maxGStoSatDistance = 5000.0; // km
+        double minGSElevation = 5.0;        // in degrees above the horizon
+        double c = 299792458.0;             // speed of light (m/s)
+
+        Ipv4AddressHelper satAddressHelper;
 
         // Constructor declaration
         Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates);
@@ -46,7 +48,7 @@ class Constellation {
 
         void updateConstellation();
 
-    // private:
+    private:
         typedef enum LinkType
         {
             GS_SAT = 0,
