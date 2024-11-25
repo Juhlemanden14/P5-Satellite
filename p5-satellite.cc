@@ -121,7 +121,6 @@ int main(int argc, char* argv[]) {
     
     // ============================== LINK HANDOVER ==============================
     // Simulator::Schedule(Seconds(5), [&LEOConstellation](){
-
     //     // BREAK LINK =======================
     //     Ptr<Ipv4> satIpv4_0 = LEOConstellation.satelliteNodes.Get(0)->GetObject<Ipv4>();
     //     Ptr<Ipv4> gsIpv4_0 = LEOConstellation.groundStationNodes.Get(0)->GetObject<Ipv4>();
@@ -186,22 +185,6 @@ int main(int argc, char* argv[]) {
     // });
 
 
-
-
-
-    // ============================== APPLICATIONS ==============================
-    UdpClientHelper udp(LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777); // Add remote addr and port
-    udp.SetAttribute("Interval", StringValue("500ms"));
-    ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
-    app.Start(Seconds(1.0));
-    app.Stop(Seconds(15.0));
-
-    
-    Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
-    Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(2), routingStream);
-
-
-
     // ========================= TCP CWND TRACE TEST ========================
     // Simulator::Schedule(MilliSeconds(1), &TraceCwnd, groundStations, 1 + satelliteCount, 0);
 
@@ -210,12 +193,28 @@ int main(int argc, char* argv[]) {
        nodes are setup before the ground stations. Therefore to trace a specific socket,
        we need to add the satellite count ot the index of the node.
     */
-
     // --------------------------------------
 
 
+
+
+    // ============================== APPLICATIONS ==============================
+    UdpClientHelper udp(LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777); // Add remote addr and port
+    udp.SetAttribute("Interval", StringValue("15s"));
+    ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
+    app.Start(Seconds(1.0));
+    app.Stop(Seconds(60*5));
+
+    
+    Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
+    Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(2), routingStream);
+
+
+
+
+
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(0, 15);
+    LEOConstellation.simulationLoop(60, 15);
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
@@ -242,7 +241,7 @@ int main(int argc, char* argv[]) {
     anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(0), "Hartebeesthoek");
     anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(1), "Tea Gardens");
     // ==================================================================================================================
-    
+
 
     NS_LOG_UNCOND("");
     NS_LOG_UNCOND("\x1b[31;1m[!]\x1b[37m Simulation is running!\x1b[0m");
