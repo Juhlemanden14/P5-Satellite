@@ -89,9 +89,11 @@ int main(int argc, char* argv[]) {
     groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
     // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
     groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
+    // Temporary
+    groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 100.1042000, 71));
 
     // Setup constellation.
-    Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, 2, groundStationsCoordinates);
+    Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, 3, groundStationsCoordinates);
 
     // TESTING ============================================================================
     Simulator::Schedule(Seconds(0.5), [&LEOConstellation](){
@@ -214,27 +216,29 @@ int main(int argc, char* argv[]) {
     // app.Start(Seconds(5.0));
     // app.Stop(Seconds(6.0));
 
-    Simulator::Schedule(Seconds(8), [&LEOConstellation](){
-        // DEBUGGING For each node, print the MAC addresses of all its NetDevices (also the loopback)
-        for (uint32_t i = 0; i < LEOConstellation.satelliteNodes.GetN(); i++){
-            NS_LOG_UNCOND("Sat " << i);
-            Ptr<Ipv4> ip = LEOConstellation.satelliteNodes.Get(i)->GetObject<Ipv4>();
-            for (uint32_t j = 0; j < ip->GetNInterfaces(); j++){
-                NS_LOG_UNCOND("     Interface " << j << " with adresses " << ip->GetNAddresses(j));
-                for (uint32_t k = 0; k < ip->GetNAddresses(j); k++)
-                    NS_LOG_UNCOND("     Node[" << i << "] Interface[" << j << "] - IP: " << ip->GetAddress(j, k).GetAddress());
-            }
-        }
-        for (uint32_t i = 0; i < LEOConstellation.groundStationNodes.GetN(); i++){
-            NS_LOG_UNCOND("GS " << i);
-            Ptr<Ipv4> ip = LEOConstellation.groundStationNodes.Get(i)->GetObject<Ipv4>();
-            for (uint32_t j = 0; j < ip->GetNInterfaces(); j++){
-                NS_LOG_UNCOND("     Interface " << j << " with adresses " << ip->GetNAddresses(j));
-                for (uint32_t k = 0; k < ip->GetNAddresses(j); k++)
-                    NS_LOG_UNCOND("     Node[" << i << "] Interface[" << j << "] - IP: " << ip->GetAddress(j, k).GetAddress());
-            }
-        }
-    });
+
+
+    // Simulator::Schedule(Seconds(8), [&LEOConstellation](){
+    //     // DEBUGGING For each node, print the MAC addresses of all its NetDevices (also the loopback)
+    //     for (uint32_t i = 0; i < LEOConstellation.satelliteNodes.GetN(); i++){
+    //         NS_LOG_UNCOND("Sat " << i);
+    //         Ptr<Ipv4> ip = LEOConstellation.satelliteNodes.Get(i)->GetObject<Ipv4>();
+    //         for (uint32_t j = 0; j < ip->GetNInterfaces(); j++){
+    //             NS_LOG_UNCOND("     Interface " << j << " with adresses " << ip->GetNAddresses(j));
+    //             for (uint32_t k = 0; k < ip->GetNAddresses(j); k++)
+    //                 NS_LOG_UNCOND("     Node[" << i << "] Interface[" << j << "] - IP: " << ip->GetAddress(j, k).GetAddress());
+    //         }
+    //     }
+    //     for (uint32_t i = 0; i < LEOConstellation.groundStationNodes.GetN(); i++){
+    //         NS_LOG_UNCOND("GS " << i);
+    //         Ptr<Ipv4> ip = LEOConstellation.groundStationNodes.Get(i)->GetObject<Ipv4>();
+    //         for (uint32_t j = 0; j < ip->GetNInterfaces(); j++){
+    //             NS_LOG_UNCOND("     Interface " << j << " with adresses " << ip->GetNAddresses(j));
+    //             for (uint32_t k = 0; k < ip->GetNAddresses(j); k++)
+    //                 NS_LOG_UNCOND("     Node[" << i << "] Interface[" << j << "] - IP: " << ip->GetAddress(j, k).GetAddress());
+    //         }
+    //     }
+    // });
 
 
     
@@ -255,10 +259,15 @@ int main(int argc, char* argv[]) {
     // --------------------------------------
 
 
-    // ========================================= Setup of NetAnimator mobility =========================================
-
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(60, 15);
+    LEOConstellation.simulationLoop(2, 15);
+
+    // ========================================= Setup of NetAnimator mobility =========================================
+    // Give each ground station a constant position model, and set the location from the satellite mobility model!
+    for (uint32_t n = 0; n < LEOConstellation.groundStationNodes.GetN(); n++) {
+        GeoCoordinate gsNpos = LEOConstellation.groundStationsMobilityModels[n]->GetGeoPosition();
+        AnimationInterface::SetConstantPosition(LEOConstellation.groundStationNodes.Get(n), gsNpos.GetLongitude(), -gsNpos.GetLatitude());
+    }
     
     // Run NetAnim from the P5-Satellite folder
     AnimationInterface anim("scratch/P5-Satellite/out/p5-satellite.xml");

@@ -46,7 +46,7 @@ class Constellation {
 
         void updateConstellation();
 
-    private:
+    // private:
         typedef enum LinkType
         {
             GS_SAT = 0,
@@ -54,14 +54,12 @@ class Constellation {
         } LinkType;
 
         // Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
-        // 
-        // Returns -1 if an error occurs. Returns 0 if not
-        int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceKM, StringValue dataRate, Ipv4Address networkAddress);
+        // If used on a GS-sat link, GSnode should always be before satNode in parameters
+        void establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceM, StringValue dataRate, LinkType linkType);
 
         // Destroy the link pointed to by node1's netdevice (specified by index).
         // Makes sure to make all connected netdevices point to the NullChannel, avoiding dangling pointers
-        // Returns -1 if an error occurs. Returns 0 if not
-        int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, LinkType linkType);
+        void destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, LinkType linkType);
 
         // ==================== Satellite specific functions ===================
         void updateInterSatelliteLinks();
