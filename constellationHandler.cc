@@ -15,6 +15,9 @@ NS_LOG_COMPONENT_DEFINE("P5-Constellation-Handler");
 // Class constructor.
 Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates) {
 
+    // Needed to avoid address collision. (Simulator issue, not real address collision)
+    Ipv4AddressGenerator::TestMode();
+
     this->satelliteCount = satCount;
     this->groundStationCount = gsCount;
 
@@ -23,6 +26,7 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
 
     // Create the ground stations in the constellation.
     this->groundStationNodes = this->createGroundStations(groundStationsCoordinates);
+    
 }
 
 
@@ -363,7 +367,7 @@ bool Constellation::GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobMod
     double elevation = (Theta * 180 / pi ) - 90; // convert to degrees and subtract by 90 in order to get the elevation of the GS antenna
     NS_LOG_DEBUG("Elevation: " << elevation << ", distance: " << distance / 1000 << " km");
 
-    if (elevation > minGSElevation && distance < (maxGStoSatDistance * 1000)) { // compare in meters
+    if (elevation > this->minGSElevation && distance < (this->maxGStoSatDistance * 1000)) { // compare in meters
         NS_LOG_DEBUG("link valid: true");
         return true;
     }
@@ -381,7 +385,7 @@ bool Constellation::GS_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobMod
 
 
 
-/*
+/*destroyLink
 ============================================================== Pseudocode: ==============================================================
 
 

@@ -13,7 +13,7 @@
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("P5-Satellite");
-// Correct Net Animator folder path from P5-Satellite: './../../../netanim-3.109/NetAnim'
+// Correct Net Animator folder path from P5-Satellite: './../../netanim-3.109/NetAnim'
 // Call in directory: 
 // $ cd ns-3.42 
 
@@ -78,8 +78,6 @@ int main(int argc, char* argv[]) {
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
     LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_ALL);
     
-
-    Ipv4AddressGenerator::TestMode(); // Needed to avoid address collision. (Simulator issue, not real address collision)
     Time::SetResolution(Time::NS);
     
     // ========================================= Setup default commandline parameters  =========================================
@@ -115,7 +113,7 @@ int main(int argc, char* argv[]) {
         SatGroundChannel->SetAttribute("DataRate", StringValue("1MBps"));
         double delayVal = 3000000.0 / 299792458.0;  // seconds
         SatGroundChannel->SetAttribute("Delay", TimeValue(Seconds(delayVal)));
-        
+
         // Attach SAT-GROUND nodes together, groundstation has 1 netdevice, satellite's fifth is always to the groundstation
         DynamicCast<CsmaNetDevice>(LEOConstellation.groundStationNodes.Get(0)->GetDevice(1))->Attach(SatGroundChannel);
         DynamicCast<CsmaNetDevice>(LEOConstellation.satelliteNodes.Get(0)->GetDevice(5))->Attach(SatGroundChannel);

@@ -10,11 +10,8 @@
 
 #include "tleHandler.h"
 
-
 using namespace ns3;
 
-#define maxGStoSatDistance 5000.0
-#define minGSElevation 5.0
 
 class Constellation {
     public:
@@ -25,6 +22,9 @@ class Constellation {
         std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
         std::vector<TLE> TLEVector;
         std::vector<Orbit> OrbitVector;
+
+        double maxGStoSatDistance = 5000.0;
+        double minGSElevation = 5.0;
         
 
         uint32_t groundStationCount;
@@ -41,7 +41,7 @@ class Constellation {
         // Returns node container with all groundstations, passes groundStationsMobilityModels by reference.
         NodeContainer createGroundStations(std::vector<GeoCoordinate> groundStationsCoordinates);
 
-    private:
+    //private:
         // Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
         // Returns -1 if an error occurs. Returns 0 if not
         int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceKM, StringValue dataRate, Ipv4Address networkAddress);
