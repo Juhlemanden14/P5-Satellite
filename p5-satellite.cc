@@ -31,20 +31,6 @@ NS_LOG_COMPONENT_DEFINE("P5-Satellite");
 //     });
 // }
 
-
-// Function to be scheduled periodically in the ns3 simulator.
-void simulationPhase(NodeContainer &satellites, std::vector<Ptr<SatSGP4MobilityModel>> &satelliteMobilityModels, std::vector<Ptr<SatConstantPositionMobilityModel>> &groundStationsMobilityModels) {
-    // NS_LOG_DEBUG("[->] Simulation at second " << Simulator::Now().GetSeconds());    // Gets the elapsed seconds in the simulation
-
-    // Set the new positions of the satellites and update their position in Net Animator.
-    for (uint32_t n = 0; n < satellites.GetN(); ++n) {
-        GeoCoordinate satPos = satelliteMobilityModels[n]->GetGeoPosition();
-        AnimationInterface::SetConstantPosition(satellites.Get(n), satPos.GetLongitude(), -satPos.GetLatitude());
-
-        //NS_LOG_DEBUG(satPos);
-    }
-}
-
 // DEBUG
 static void CwndTracer(uint32_t oldval, uint32_t newval) {
     NS_LOG_UNCOND( "CWND at sim time:" << Simulator::Now().GetSeconds() << "s, CWND:" << oldval << " --> " << newval);
@@ -179,10 +165,8 @@ int main(int argc, char* argv[]) {
     
     // LINK HANDOVER ==================================================
     Simulator::Schedule(Seconds(5), [&LEOConstellation](){
-        // Do satellite TLE sim:
-        simulationPhase(LEOConstellation.satelliteNodes, LEOConstellation.satelliteMobilityModels, LEOConstellation.groundStationsMobilityModels);
 
-        // BREAK LINK ========================
+        // BREAK LINK =======================
         Ptr<Ipv4> satIpv4_0 = LEOConstellation.satelliteNodes.Get(0)->GetObject<Ipv4>();
         Ptr<Ipv4> gsIpv4_0 = LEOConstellation.groundStationNodes.Get(0)->GetObject<Ipv4>();
         // SAT0
@@ -224,11 +208,11 @@ int main(int argc, char* argv[]) {
     });
 
     // ========================= TCP CWND TRACE TEST ========================
-    UdpClientHelper udp(LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777); // Add remote addr and port
-    udp.SetAttribute("Interval", StringValue("100ms"));
-    ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
-    app.Start(Seconds(0.0));
-    app.Stop(Seconds(10.0));
+    // UdpClientHelper udp(LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777); // Add remote addr and port
+    // udp.SetAttribute("Interval", StringValue("500ms"));
+    // ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
+    // app.Start(Seconds(5.0));
+    // app.Stop(Seconds(6.0));
 
     Simulator::Schedule(Seconds(8), [&LEOConstellation](){
         // DEBUGGING For each node, print the MAC addresses of all its NetDevices (also the loopback)
@@ -272,20 +256,9 @@ int main(int argc, char* argv[]) {
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
-    // Give each ground station a constant position model, and set the location from the satellite mobility model!
-    for (uint32_t n = 0; n < LEOConstellation.groundStationNodes.GetN(); n++) {
-        GeoCoordinate gsNpos = LEOConstellation.groundStationsMobilityModels[n]->GetGeoPosition();
-        AnimationInterface::SetConstantPosition(LEOConstellation.groundStationNodes.Get(n), gsNpos.GetLongitude(), -gsNpos.GetLatitude());
-    }
 
-    // Run simulationphase at time 0
-    simulationPhase(LEOConstellation.satelliteNodes, LEOConstellation.satelliteMobilityModels, LEOConstellation.groundStationsMobilityModels);
-    // Run simulation phase at i intervals
-    int interval = 20*0.25;
-    for (int i = 1; i < 200; ++i) {
-        Time t = Seconds(i * interval);
-        Simulator::Schedule(t, simulationPhase, LEOConstellation.satelliteNodes, LEOConstellation.satelliteMobilityModels, LEOConstellation.groundStationsMobilityModels);
-    }
+    // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
+    LEOConstellation.simulationLoop(60, 15);
     
     // Run NetAnim from the P5-Satellite folder
     AnimationInterface anim("scratch/P5-Satellite/out/p5-satellite.xml");
@@ -293,7 +266,7 @@ int main(int argc, char* argv[]) {
     anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
     // Pretty Satellites :)
     for (uint32_t n = 0; n < LEOConstellation.satelliteNodes.GetN(); n++){
-        anim.UpdateNodeDescription(n, LEOConstellation.TLEVector[n].name.substr(LEOConstellation.TLEVector[n].name.size() - 4,  4));  // Only works for starlink
+        anim.UpdateNodeDescription(n, LEOConstellation.TLEVector[n].name);
         anim.UpdateNodeSize(n, 5, 5);
     }
     // Pretty Ground stations

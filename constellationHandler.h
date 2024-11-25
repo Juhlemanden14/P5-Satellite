@@ -25,6 +25,7 @@ class Constellation {
 
         double maxGStoSatDistance = 5000.0;
         double minGSElevation = 5.0;
+        double c = 299792458.0; // speed of light (m/s)
         
 
         uint32_t groundStationCount;
@@ -41,15 +42,26 @@ class Constellation {
         // Returns node container with all groundstations, passes groundStationsMobilityModels by reference.
         NodeContainer createGroundStations(std::vector<GeoCoordinate> groundStationsCoordinates);
 
-    //private:
+        void simulationLoop(int totalMinutes, int updateIntervalSeconds);
+
+        void updateConstellation();
+
+    private:
+        typedef enum LinkType
+        {
+            GS_SAT = 0,
+            SAT_SAT
+        } LinkType;
+
         // Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
+        // 
         // Returns -1 if an error occurs. Returns 0 if not
         int establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceKM, StringValue dataRate, Ipv4Address networkAddress);
 
         // Destroy the link pointed to by node1's netdevice (specified by index).
         // Makes sure to make all connected netdevices point to the NullChannel, avoiding dangling pointers
         // Returns -1 if an error occurs. Returns 0 if not
-        int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex);
+        int destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, LinkType linkType);
 
         // ==================== Satellite specific functions ===================
         void updateInterSatelliteLinks();
