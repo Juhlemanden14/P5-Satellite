@@ -166,6 +166,14 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     int loops = int(60*totalMinutes / updateIntervalSeconds);
     NS_LOG_DEBUG("[+] Simulation scheduled to loop " << loops << " times");
 
+    // TESTING: establishing a link between 2 satellites!
+    Ptr<Node> sat0 = Names::Find<Node>("STARLINK-30159");
+    Ptr<Node> sat1 = Names::Find<Node>("STARLINK-5748");
+    this->establishLink(sat0, 1, sat1, 1, 3000000, StringValue("20MBps"), SAT_SAT);
+    Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+    // -------------------------------------------------   
+
+
     // Update constellation for time 0 (before the Simulation starts)
     this->updateConstellation();
 
@@ -176,11 +184,6 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
             this->updateConstellation();
         });
     }
-
-    // TESTING establishing a link between 2 satellites!
-    Ptr<Node> sat0 = Names::Find<Node>("STARLINK-30159");
-    Ptr<Node> sat1 = Names::Find<Node>("STARLINK-5748");
-    this->establishLink(sat0, 1, sat1, 1, 3000000, StringValue("20MBps"), SAT_SAT);
 }
 
 // Function to be scheduled periodically in the ns3 simulator.
@@ -195,7 +198,10 @@ void Constellation::updateConstellation() {
     this->updateGroundStationLinks();
     // this->updateInterSatelliteLinks();
 
-    // NS_LOG_DEBUG("[->] Simulation at second " << Simulator::Now().GetSeconds());    // Gets the elapsed seconds in the simulation
+    // NS_LOG_DEBUG("[->] Simulation at second " << Simulator::Now().GetSeconds());
+
+    // At the end of each round, recompute the routing tables such that new links can be used, and broken ones are forgotten
+    Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
 }
 
 
@@ -354,7 +360,6 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
         // this->satAddressHelper.NewNetwork();
     }
 
-    Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
 }
 
 
