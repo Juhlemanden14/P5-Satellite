@@ -71,7 +71,8 @@ int main(int argc, char* argv[]) {
     // -25.8872, 27.7077, 1540 -- Hartebeesthoek, South Africa
     groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
     // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
-    groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
+    //groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
+    groundStationsCoordinates.emplace_back(GeoCoordinate(40.5931930, 152.1042000, 71));
     // Temporary
     //groundStationsCoordinates.emplace_back(GeoCoordinate(-10, 100.1042000, 500));
 
@@ -207,7 +208,7 @@ int main(int argc, char* argv[]) {
 
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(0, 15);
+    LEOConstellation.simulationLoop(10, 15);
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
@@ -224,12 +225,12 @@ int main(int argc, char* argv[]) {
     // Pretty Satellites :)
     for (uint32_t n = 0; n < LEOConstellation.satelliteNodes.GetN(); n++){
         anim.UpdateNodeDescription(n, LEOConstellation.TLEVector[n].name);
-        anim.UpdateNodeSize(n, 5, 5);
+        anim.UpdateNodeSize(n, 3, 3);
     }
     // Pretty Ground stations
     for (uint32_t n = 0; n < LEOConstellation.groundStationNodes.GetN(); n++){
         anim.UpdateNodeColor(LEOConstellation.groundStationNodes.Get(n), 0, 255, 255);
-        anim.UpdateNodeSize(LEOConstellation.groundStationNodes.Get(n), 3, 3);
+        anim.UpdateNodeSize(LEOConstellation.groundStationNodes.Get(n), 4, 4);
     }
     anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(0), "Hartebeesthoek");
     anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(1), "Tea Gardens");

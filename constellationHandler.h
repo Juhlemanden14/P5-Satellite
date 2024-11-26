@@ -101,27 +101,32 @@ class Constellation {
         */
         Ptr<NetDevice> getConnectedNetDev(Ptr<Node> GSNode, int netDevIndex);
 
+        /**
+        Check if there is a channel connected to the nodes netdevice with index netDevIndex, which has 2 connected netdevices. This means a link exists.
+        return true/false based on if the link exists
+        */
+        bool hasExistingLink(Ptr<Node> GSNode, int netDevIndex);
+
         // ==================== Satellite specific functions ===================
-        void updateInterSatelliteLinks();
-        void checkImpossibleSatLinks();
+        void updateSatelliteLinks();
+
+        bool satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int netDeviceIndex, Ptr<SatSGP4MobilityModel> connMobilityModel, int connNetDeviceIndex);
+
+        void initializeIntraLinks();
 
         // ==================== Ground station speecific =======================
         void updateGroundStationLinks();
-
-        /**
-        Check if there is a channel connected to the GS's netdevice1, which has 2 connected NetDevices. this means a link exists.
-        return true/false based on if the link exists
-        */
-        bool checkExistingLink(Ptr<Node> GSNode);
 
         /**
         return a bool telling us whether the link is allowed to exist or not. This is based on GS elevation angle and distance between sat and GS
         */
         bool gsIsLinkValid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
 
-        bool satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int netDeviceIndex, Ptr<SatSGP4MobilityModel> connMobilityModel, int connNetDeviceIndex);
 
-        void initializeIntraLinks();
+
+
+
+        
 
 };
 

@@ -61,7 +61,7 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
 
 
     // If no amount of satellites is specified, set it to the number of satellites in the orbit TLE data
-    if ( (this->satelliteCount == 0 || this->satelliteCount) > this->TLEVector.size()) {
+    if ( (this->satelliteCount == 0) || (this->satelliteCount > this->TLEVector.size()) ) {
         this->satelliteCount = this->TLEVector.size(); // Change this if you want to include all satellites from TLE data!
     }
 
@@ -162,6 +162,73 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
 
     return groundStations;
 }
+
+
+void Constellation::initializeIntraLinks() {
+    uint32_t counter = 0;
+
+    for (size_t i = 0; i < this->OrbitVector.size(); ++i) {
+        NS_LOG_DEBUG("ORBIT " << i+1 << "/" << this->OrbitVector.size());
+        Orbit orbit = OrbitVector[i];
+        
+        for (size_t j = 0; j < orbit.satellites.size(); ++j) {
+            NS_LOG_DEBUG("  SAT " << j+1 << "/" << orbit.satellites.size());
+
+            Ptr<Node> satellite = Names::Find<Node>(orbit.satellites[j]);
+            Ptr<Node> nextSatellite;
+
+            counter++;
+
+            // If very last satellite in the orbit.
+            if (j == orbit.satellites.size() - 1) {
+                nextSatellite = Names::Find<Node>(orbit.satellites[0]);
+            } else {
+                if (counter == this->satelliteCount){
+                    return;     // if we get here, return early as all sats have been checked.
+                }
+                nextSatellite = Names::Find<Node>(orbit.satellites[j+1]);
+            }
+
+            // Extract mobility models for the nodes.
+            Ptr<SatSGP4MobilityModel> satMob = this->satelliteMobilityModels[satellite->GetId()];
+            Ptr<SatSGP4MobilityModel> nextSatMob = this->satelliteMobilityModels[nextSatellite->GetId()];
+            
+            // For each combination of netdevices, check of link can be established
+            for (size_t n1 = 1; n1 <= 4; n1++){         // n1 for netDeviceIndex1
+                for (size_t n2 = 1; n2 <= 4; n2++) {     // n2 for netDeviceIndex2
+                    // skip impossible situations
+                    if (n1 == n2) {
+                        continue;
+                    }
+                    // If either if the NetDevices already have a connection, skip
+                    if ( hasExistingLink(satellite, n1) || hasExistingLink(nextSatellite, n2) ) {
+                        continue;
+                    }
+                    // Is the link possible according to angles, establish a connection
+                    if (satIsLinkValid(satMob, n1, nextSatMob, n2)) {
+                        double distance = satMob->GetDistanceFrom(nextSatMob);
+                        this->establishLink(satellite, n1, nextSatellite, n2, distance, SAT_SAT);
+                    }
+                }
+
+            }
+        }
+    }
+    NS_LOG_DEBUG("[!] INIT SAT LINKS DONE");
+
+    // for plane in orbits:         // go through each orbital plane and try to establish valid links
+    //     for sat in plane:
+    //         get next sat in line. If at last index, get 0'th index as the next, completing the ring-loop
+    //         if (satIsLinkValid(currSatMobModel, 1, nextSatMobModel, 3)) {       // pseudocode for method below
+    //             connect sat netDev1 with next_sat netDev3 using establishLink()
+    //             continue        // go to next sat in the orbit
+    //         }
+    //         else {
+    //             add sat and netDev1 to pairs queue
+    //         }
+}
+
+
 // --------------------------------------------------------
 
 
@@ -171,18 +238,18 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     int loops = int(60*totalMinutes / updateIntervalSeconds);
     NS_LOG_DEBUG("[+] Simulation scheduled to loop " << loops << " times");
 
-    // TESTING: establishing a link between 2 satellites!
-    Ptr<Node> sat0 = Names::Find<Node>("STARLINK-30159");
-    Ptr<Node> sat1 = Names::Find<Node>("STARLINK-5748");
+    // // TESTING: establishing a link between 2 satellites!
+    // Ptr<Node> sat0 = Names::Find<Node>("STARLINK-30159");
+    // Ptr<Node> sat1 = Names::Find<Node>("STARLINK-5748");
+    // this->establishLink(sat0, 1, sat1, 1, 3000000, SAT_SAT);
+    // Ptr<Node> sat6 = Names::Find<Node>("STARLINK-5366");
+    // Ptr<Node> sat7 = Names::Find<Node>("STARLINK-30159");
+    // this->establishLink(sat6, 2, sat7, 2, 3000000, SAT_SAT);
 
-    this->establishLink(sat0, 1, sat1, 1, 3000000, SAT_SAT);
-    Ptr<Node> sat6 = Names::Find<Node>("STARLINK-5366");
-    Ptr<Node> sat7 = Names::Find<Node>("STARLINK-30159");
-    this->establishLink(sat6, 2, sat7, 2, 3000000, SAT_SAT);
 
-
+    this->initializeIntraLinks();
     
-    Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+    // Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     // -------------------------------------------------
 
 
@@ -200,6 +267,8 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
 
 // Function to be scheduled periodically in the ns3 simulator.
 void Constellation::updateConstellation() {
+    NS_LOG_DEBUG("\n\n[+] <" << Simulator::Now().GetSeconds() << "> UPDATING CONSTELLATION");
+
     // Set the new positions of the satellites and update their position in NetAnimator.
     for (uint32_t n = 0; n < this->satelliteNodes.GetN(); ++n) {
         GeoCoordinate satPos = this->satelliteMobilityModels[n]->GetGeoPosition();
@@ -208,12 +277,15 @@ void Constellation::updateConstellation() {
     }
 
     this->updateGroundStationLinks();
-    // this->updateInterSatelliteLinks();
+    this->updateSatelliteLinks();
 
-    // NS_LOG_DEBUG("[->] Simulation at second " << Simulator::Now().GetSeconds());
+
 
     // At the end of each round, recompute the routing tables such that new links can be used, and broken ones are forgotten
     Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
+    // POPULATE All satellites ARP tables :)
+    NeighborCacheHelper neighborCacheHelper;
+    neighborCacheHelper.PopulateNeighborCache();
 }
 
 
@@ -226,7 +298,7 @@ void Constellation::updateGroundStationLinks() {
         Ptr<SatConstantPositionMobilityModel> gsMobModel = this->groundStationsMobilityModels[gsIndex];
         bool linkFound = false;                 // keep track of if any GS which doesnt get a link. That is bad (but okay)
 
-        if (this->checkExistingLink(gs)) {                         // if GS has an existing link, get the connected satellite
+        if (this->hasExistingLink(gs, 1)) {                         // if GS has an existing link, get the connected satellite
             Ptr<Node> connectedSat = this->getConnectedNetDev(gs, 1)->GetNode();      // get connected satellites mobility model
             uint32_t satMobModelIndex = connectedSat->GetId();      // get the index of the satellite for use in the mobility model vector
             Ptr<SatSGP4MobilityModel> satMobModel = this->satelliteMobilityModels[satMobModelIndex];
@@ -300,8 +372,8 @@ bool Constellation::gsIsLinkValid(Ptr<SatConstantPositionMobilityModel> GSMobMod
     }
 }
 
-bool Constellation::checkExistingLink(Ptr<Node> node) {   
-    if (node->GetDevice(1)->GetChannel()->GetNDevices() == 2) {
+bool Constellation::hasExistingLink(Ptr<Node> node, int netDevIndex) {
+    if (node->GetDevice(netDevIndex)->GetChannel()->GetNDevices() == 2) {
         return true;
     }
     return false;
@@ -365,7 +437,8 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
         ipv4_1->AddAddress(node1NetDeviceIndex, satNewAddr0);
         ipv4_2->AddAddress(node2NetDeviceIndex, satNewAddr1);
 
-        NS_LOG_DEBUG("SAT1 IP: " << satNewAddr0.GetAddress() << " | SAT2 IP: " << satNewAddr1.GetAddress());
+        NS_LOG_DEBUG("      SAT1 IP: " << satNewAddr0.GetAddress() << " -> " << Names::FindName(node1) << " | SAT2 IP: " << satNewAddr1.GetAddress() << " -> " << Names::FindName(node2));
+
 
         // // ALTERNATIVE WAY TO ASSIGN IP ADDRESSES TO SATELLITES
         // NetDeviceContainer tmp = NetDeviceContainer(node1->GetDevice(node1NetDeviceIndex), node2->GetDevice(node2NetDeviceIndex));
@@ -408,7 +481,7 @@ void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<No
     Ptr<CsmaChannel> nullChannel1 = CreateObject<CsmaChannel>();
     Ptr<CsmaChannel> nullChannel2 = CreateObject<CsmaChannel>();
     DynamicCast<CsmaNetDevice>( node1->GetDevice(node1NetDeviceIndex) )->Attach(nullChannel1);
-    DynamicCast<CsmaNetDevice>( node2->GetDevice(node1NetDeviceIndex) )->Attach(nullChannel2);
+    DynamicCast<CsmaNetDevice>( node2->GetDevice(node2NetDeviceIndex) )->Attach(nullChannel2);
 
     // If GS_SAT, only remoove the SAT IP. If SAT_SAT, remove both their 
     if (linkType == GS_SAT) {
@@ -506,55 +579,6 @@ void Constellation::releaseLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Addres
 
 
 
-void Constellation::initializeIntraLinks() {
-
-    for (size_t i = 0; i < this->OrbitVector.size(); ++i) {
-        Orbit orbit = OrbitVector[i];
-        
-        for (size_t j = 0; j < orbit.satellites.size(); ++j) {
-            Ptr<Node> satellite = Names::Find<Node>(orbit.satellites[j]);
-            Ptr<Node> nextSatellite;
-
-            // If very last satellite in the orbit.
-            if (j == orbit.satellites.size() - 1){
-                nextSatellite = Names::Find<Node>(orbit.satellites[0]);
-            } else {
-                nextSatellite = Names::Find<Node>(orbit.satellites[j+1]);
-            }
-
-            // Extract mobility models for the nodes.
-            Ptr<SatSGP4MobilityModel> satMob = this->satelliteMobilityModels[satellite->GetId()];
-            Ptr<SatSGP4MobilityModel> nextSatMob = this->satelliteMobilityModels[nextSatellite->GetId()];
-            
-            // For each combination of netdevices, check of link can be established
-            for (size_t n1 = 1; n1 <= 4; n1++){         // n1 for netDeviceIndex1
-                for (size_t n2 = 1; n2 <= 4; n2++){     // n2 for netDeviceIndex2
-                    // skip impossible situations
-                    if (n1 == n2) {
-                        continue;
-                    }
-                    
-                    if (satIsLinkValid(satMob, n1, nextSatMob, n2)) {
-                        double distance = satMob->GetDistanceFrom(nextSatMob);
-                        this->establishLink(satellite, n1, nextSatellite, n2, distance, SAT_SAT);
-                    }
-                }   
-            }
-        }
-    }
-
-    // for plane in orbits:         // go through each orbital plane and try to establish valid links
-    //     for sat in plane:
-    //         get next sat in line. If at last index, get 0'th index as the next, completing the ring-loop
-    //         if (satIsLinkValid(currSatMobModel, 1, nextSatMobModel, 3)) {       // pseudocode for method below
-    //             connect sat netDev1 with next_sat netDev3 using establishLink()
-    //             continue        // go to next sat in the orbit
-    //         }
-    //         else {
-    //             add sat and netDev1 to pairs queue
-    //         }
-}
-
 
 bool Constellation::satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int netDeviceIndex, Ptr<SatSGP4MobilityModel> connMobilityModel, int connNetDeviceIndex) {
     
@@ -591,35 +615,48 @@ bool Constellation::satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int 
     return true;
 }
 
+void Constellation::updateSatelliteLinks() {
+    // Iterate over each satellite
+    for (uint32_t i = 0; i < this->satelliteCount; i++) {
 
+        // Get the node and sat mobility model
+        Ptr<Node> satNode = this->satelliteNodes.Get(i);
+        Ptr<SatSGP4MobilityModel> satMobModel = this->satelliteMobilityModels[i];
+        
+        // Iterate over each satellites NetDevices' connection. Maintain it, or BREAK it if needed
+        for (int netDevIndex = 1; netDevIndex <= 4; netDevIndex++) {
 
+            // Check if there is an already existing link
+            if (this->hasExistingLink(satNode, netDevIndex)) {
+                Ptr<NetDevice> connNetDev = this->getConnectedNetDev(satNode, netDevIndex);
+                Ptr<Node> connSatNode = connNetDev->GetNode();
+                Ptr<SatSGP4MobilityModel> connSatMobModel = this->satelliteMobilityModels[connSatNode->GetId()];
+                
+                // actual warcrime but it works so keep it or live with the consequences of your actions, bling bling brr brr skyat
+                uint32_t ipv4InterfaceIndex = connSatNode->GetObject<Ipv4>()->GetInterfaceForDevice(connNetDev);
+                uint32_t connNetDevIndex = ipv4InterfaceIndex;      // We know that IPv4 and netDev index are always the same
+                
+                if (this->satIsLinkValid(satMobModel, netDevIndex, connSatMobModel, connNetDevIndex)) {
+                    // NS_LOG_DEBUG("Link maintained satellites <" << Names::FindName(satNode) << "> - <" << Names::FindName(connSatNode) << ">");
+                    continue;       // move on ot next netdevice for this satellite
+                }
+                else {
+                    NS_LOG_DEBUG("Link BROKEN satellites <" << Names::FindName(satNode) << "> - <" << Names::FindName(connSatNode) << ">");
+                    destroyLink(satNode, netDevIndex, connSatNode, connNetDevIndex, SAT_SAT);
+                    // TODO: add (satNode, satNetDev) and (connSatNode, connSatNetDev) to free pairs 
+                }
 
+            }
+        }
+    }
+    
+    // link establishment
+    // for () {
+    //  brr   
+    // }
+}
 
 /* ========================= PSEUDO-CODE for updateInterSatelliteLinks =========================
-
-This can be made in a clever way with the following algorithm:
- - on initialization of the constellation:
-    - make intraplane connections between sats - only if valid links
-    - keep track of pairs containing node and netDevIndex (std::pair<Ptr<node>, uint32_t>)
-
- - during simulationLoop:
-    - loop1: Break impossible links - add newly available node/netDev pairs to same queue as before
-    - loop2: Go through queue and try to make connections between empty netDev's
-
-
-
-void Constellation::initializeIntraLinks() {
-    for plane in orbits:         // go through each orbital plane and try to establish valid links
-        for sat in plane:
-            get next sat in line. If at last index, get 0'th index as the next, completing the ring-loop
-            if (satIsLinkValid(currSatMobModel, 1, nextSatMobModel, 3)) {       // pseudocode for method below
-                connect sat netDev1 with next_sat netDev3 using establishLink()
-                continue        // go to next sat in the orbit
-            }
-            else {
-                add sat and netDev1 to pairs queue
-            }
-}
 
 void Constellation::updateSatelliteLinks() {
 
@@ -667,37 +704,28 @@ void Constellation::updateSatelliteLinks() {
             }
 }
 
-struct AngleRange {
-    double minAngle;
-    double maxAngle;
-};
+This can be made in a clever way with the following algorithm:
+ - on initialization of the constellation:
+    - make intraplane connections between sats - only if valid links
+    - keep track of pairs containing node and netDevIndex (std::pair<Ptr<node>, uint32_t>)
 
-const AngleRange NetDeviceAngles[] = {
-    { -45.0,  45.0 }, // NetDev1
-    {  45.0, 135.0 }, // NetDev2
-    { 135.0, 225.0 }, // NetDev3
-    { 225.0, 315.0 }  // NetDev4
-};
+ - during simulationLoop:
+    - loop1: Break impossible links - add newly available node/netDev pairs to same queue as before
+    - loop2: Go through queue and try to make connections between empty netDev's
 
-bool satIsLinkValid(currSatMobModel, currNetDev, connSatMobModel, connSatNetDev) {
-    // get angle from sat1 to sat2 and the other way around
-    angleSat1Sat2, angleSat2Sat1 = getAngleFromSatPair(currSatMobModel, connSatMobModel)
-    
-    // first check for sat1. Check negative cases and stop early if true
-    if ((!angleSat1Sat2 >= NetDeviceAngles[currNetDev - 1].minAngle) || (!angleSat1Sat2 < NetDeviceAngles[currNetDev - 1].maxAngle)) {
-        return false        // return early if we get here
-    }
 
-    // then check for sat2
-    if ((!angleSat2Sat1 >= NetDeviceAngles[currNetDev - 1]).minAngle || (!angleSat2Sat1 < NetDeviceAngles[currNetDev - 1].maxAngle)) {
-        return false        // return early if we get here
-    }
 
-    // if both checks passed, the link is valid
-    return true
+void Constellation::initializeIntraLinks() {
+    for plane in orbits:         // go through each orbital plane and try to establish valid links
+        for sat in plane:
+            get next sat in line. If at last index, get 0'th index as the next, completing the ring-loop
+            if (satIsLinkValid(currSatMobModel, 1, nextSatMobModel, 3)) {       // pseudocode for method below
+                connect sat netDev1 with next_sat netDev3 using establishLink()
+                continue        // go to next sat in the orbit
+            }
+            else {
+                add sat and netDev1 to pairs queue
+            }
 }
-
-
-
 
 */
