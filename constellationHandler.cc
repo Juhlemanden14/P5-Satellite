@@ -13,7 +13,7 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("P5-Constellation-Handler");
 
 // Class constructor.
-Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates) {
+Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates, StringValue gsInputDataRate, StringValue satInputDataRate) {
 
     // Needed to avoid address collision. (Simulator issue, not real address collision)
     Ipv4AddressGenerator::TestMode();
@@ -29,6 +29,11 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
 
     // Set satellite address helper, which is used to assign them Ipv4Addresses
     this->satAddressHelper.SetBase(Ipv4Address("2.0.0.0"), Ipv4Mask("255.255.255.0"));
+
+    // Set the eSAT_SAT and GS_SAT DataRates
+    this->gsToSatDataRate = gsInputDataRate;
+    this->satToSatDataRate = satInputDataRate;
+
 }
 
 NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string orbitsDataPath) {
@@ -170,10 +175,10 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     Ptr<Node> sat0 = Names::Find<Node>("STARLINK-30159");
     Ptr<Node> sat1 = Names::Find<Node>("STARLINK-5748");
 
-    this->establishLink(sat0, 1, sat1, 1, 3000000, StringValue("20MBps"), SAT_SAT);
+    this->establishLink(sat0, 1, sat1, 1, 3000000, SAT_SAT);
     Ptr<Node> sat6 = Names::Find<Node>("STARLINK-5366");
     Ptr<Node> sat7 = Names::Find<Node>("STARLINK-30159");
-    this->establishLink(sat6, 2, sat7, 2, 3000000, StringValue("20MBps"), SAT_SAT);
+    this->establishLink(sat6, 2, sat7, 2, 3000000, SAT_SAT);
 
 
     
@@ -245,9 +250,9 @@ void Constellation::updateGroundStationLinks() {
 
             if (this->gsIsLinkValid(gsMobModel, newSatMobModel)) {    // check if a link from GS to sat could work, if yes establish it and move to next GS
                 double distance = gsMobModel->GetDistanceFrom(newSatMobModel);
-                StringValue dataRate = StringValue("20MBps");   // TODO: find an appropriate dataRate
+                StringValue dataRate = dataRate;   // TODO: find an appropriate dataRate
                 // Establish a GS_SAT link. GS NetDevice is always 1, while SAT NetDevice is always 5 
-                establishLink(gs, 1, newSat, 5, distance, dataRate, GS_SAT);
+                establishLink(gs, 1, newSat, 5, distance, GS_SAT);
                 NS_LOG_INFO("[+] Link established between GS " << gsIndex << " and satellite index " << Names::FindName(newSat));
                 linkFound = true;
                 // Since valid link is established, move on to next GS
@@ -318,7 +323,7 @@ Ptr<NetDevice> Constellation::getConnectedNetDev(Ptr<Node> GSNode, int netDevInd
 }
 
 
-void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceM, StringValue channelDataRate, LinkType linkType) {
+void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceM, LinkType linkType) {
     // check if any indexes are out of bounds. GS's must be handled seperately
     if (node1NetDeviceIndex > 5 || node2NetDeviceIndex > 5) {
         NS_LOG_ERROR("Index out of bounds in establishLink");
@@ -326,13 +331,8 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
     }
 
     Ptr<CsmaChannel> channel = CreateObject<CsmaChannel>();
-    double channelDelay = distanceM / c;  // seconds 
+    double channelDelay = distanceM / c;  // seconds
     channel->SetAttribute("Delay", TimeValue( Seconds(channelDelay) ));
-    channel->SetAttribute("DataRate", channelDataRate);
-
-    // Attach nodes to the same csma channel.
-    DynamicCast<CsmaNetDevice>(node1->GetDevice(node1NetDeviceIndex))->Attach(channel);
-    DynamicCast<CsmaNetDevice>(node2->GetDevice(node2NetDeviceIndex))->Attach(channel);
     
     Ptr<Ipv4> ipv4_1 = node1->GetObject<Ipv4>();
     Ptr<Ipv4> ipv4_2 = node2->GetObject<Ipv4>();
@@ -355,6 +355,8 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
         ipv4_2->AddAddress(node2NetDeviceIndex, satNewAddr);
 
         NS_LOG_DEBUG("Groundstation current IP: " << gsIP << " -> New Satellite IP: " << satNewIP);
+
+        channel->SetAttribute("DataRate", this->gsToSatDataRate);
     }
     else if (linkType == SAT_SAT) { // Is link is being  established
         std::pair<Ipv4Address, Ipv4Address> addressPair = getLinkAddressPair();
@@ -370,7 +372,13 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
         // NetDeviceContainer tmp = NetDeviceContainer(node1->GetDevice(node1NetDeviceIndex), node2->GetDevice(node2NetDeviceIndex));
         // this->satAddressHelper.Assign(tmp);
         // this->satAddressHelper.NewNetwork();
+
+        channel->SetAttribute("DataRate", this->satToSatDataRate);
     }
+
+    // Attach nodes to the same csma channel.
+    DynamicCast<CsmaNetDevice>(node1->GetDevice(node1NetDeviceIndex))->Attach(channel);
+    DynamicCast<CsmaNetDevice>(node2->GetDevice(node2NetDeviceIndex))->Attach(channel);
 
 }
 
@@ -500,6 +508,42 @@ void Constellation::releaseLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Addres
 
 
 void Constellation::initializeIntraLinks() {
+
+    for (size_t i = 0; i < this->OrbitVector.size(); ++i) {
+        Orbit orbit = OrbitVector[i];
+        
+        for (size_t j = 0; j < orbit.satellites.size(); ++j) {
+            Ptr<Node> satellite = Names::Find<Node>(orbit.satellites[j]);
+            Ptr<Node> nextSatellite;
+
+            // If very last satellite in the orbit.
+            if (j == orbit.satellites.size() - 1){
+                nextSatellite = Names::Find<Node>(orbit.satellites[0]);
+            } else {
+                nextSatellite = Names::Find<Node>(orbit.satellites[j+1]);
+            }
+
+            // Extract mobility models for the nodes.
+            Ptr<SatSGP4MobilityModel> satMob = this->satelliteMobilityModels[satellite->GetId()];
+            Ptr<SatSGP4MobilityModel> nextSatMob = this->satelliteMobilityModels[nextSatellite->GetId()];
+            
+            // For each combination of netdevices, check of link can be established
+            for (size_t n1 = 1; n1 <= 4; n1++){         // n1 for netDeviceIndex1
+                for (size_t n2 = 1; n2 <= 4; n2++){     // n2 for netDeviceIndex2
+                    // skip impossible situations
+                    if (n1 == n2) {
+                        continue;
+                    }
+                    
+                    if (satIsLinkValid(satMob, n1, nextSatMob, n2)) {
+                        double distance = satMob->GetDistanceFrom(nextSatMob);
+                        this->establishLink(satellite, n1, nextSatellite, n2, distance, SAT_SAT);
+                    }
+                }   
+            }
+        }
+    }
+
     // for plane in orbits:         // go through each orbital plane and try to establish valid links
     //     for sat in plane:
     //         get next sat in line. If at last index, get 0'th index as the next, completing the ring-loop

@@ -76,11 +76,7 @@ int main(int argc, char* argv[]) {
     //groundStationsCoordinates.emplace_back(GeoCoordinate(-10, 100.1042000, 500));
 
     // Setup constellation.
-    Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, groundStationsCoordinates.size(), groundStationsCoordinates);
-
-
-
-
+    Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, groundStationsCoordinates.size(), groundStationsCoordinates, StringValue("20Mbps"), StringValue("20Mbps"));
 
 
     // ============================== TESTING ==============================

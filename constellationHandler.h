@@ -39,7 +39,7 @@ class Constellation {
         Ipv4AddressHelper satAddressHelper;
 
         // Constructor declaration
-        Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates);
+        Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates, StringValue gsInputDataRate, StringValue satInputDataRate);
 
         // Returns node container with all satellites, passes satelliteMobiliyModels.
         NodeContainer createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string tleOrbitsPath);
@@ -69,6 +69,10 @@ class Constellation {
             { 225.0, 315.0 }  // NetDev4 right
         };
 
+        // Data rates:
+        StringValue satToSatDataRate;
+        StringValue gsToSatDataRate;
+
         // Queue for providing ipv4 addresses for inter satellite links.
         std::queue< std::pair<Ipv4Address, Ipv4Address> > linkAddressProvider;
         int linkSubnetCounter = 0;
@@ -83,7 +87,7 @@ class Constellation {
         // If used on a GS-sat link, GSnode should always be before satNode in parameters
         // If link type is gs-sat, satellite is assigned an IP on the same subnet as the GS's already existing IP address
         // If link type is sat-sat, they are both assigned an arbitrary IP address
-        void establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceM, StringValue dataRate, LinkType linkType);
+        void establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceM, LinkType linkType);
 
         // Destroy the link between node1 and node2's netdevices (specified by index).
         // Makes sure to make all connected netdevices point to the NullChannel, avoiding dangling pointers
