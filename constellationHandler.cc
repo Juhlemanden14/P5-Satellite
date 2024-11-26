@@ -21,6 +21,10 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
     this->satelliteCount = satCount;
     this->groundStationCount = gsCount;
 
+    // Set the eSAT_SAT and GS_SAT DataRates
+    this->gsToSatDataRate = gsInputDataRate;
+    this->satToSatDataRate = satInputDataRate;
+
     // Create the satellites in the constellation.
     this->satelliteNodes = this->createSatellitesFromTLEAndOrbits(tleDataPath, orbitsDataPath);
 
@@ -29,10 +33,6 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
 
     // Set satellite address helper, which is used to assign them Ipv4Addresses
     this->satAddressHelper.SetBase(Ipv4Address("2.0.0.0"), Ipv4Mask("255.255.255.0"));
-
-    // Set the eSAT_SAT and GS_SAT DataRates
-    this->gsToSatDataRate = gsInputDataRate;
-    this->satToSatDataRate = satInputDataRate;
 
 }
 
@@ -250,8 +250,7 @@ void Constellation::updateGroundStationLinks() {
 
             if (this->gsIsLinkValid(gsMobModel, newSatMobModel)) {    // check if a link from GS to sat could work, if yes establish it and move to next GS
                 double distance = gsMobModel->GetDistanceFrom(newSatMobModel);
-                StringValue dataRate = dataRate;   // TODO: find an appropriate dataRate
-                // Establish a GS_SAT link. GS NetDevice is always 1, while SAT NetDevice is always 5 
+                // Establish a GS_SAT link. GS NetDevice is always 1, while SAT NetDevice is always 5
                 establishLink(gs, 1, newSat, 5, distance, GS_SAT);
                 NS_LOG_INFO("[+] Link established between GS " << gsIndex << " and satellite index " << Names::FindName(newSat));
                 linkFound = true;
