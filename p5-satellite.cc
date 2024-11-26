@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
 
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(5, 15);
+    LEOConstellation.simulationLoop(0, 15);
 
 
     // ========================================= Setup of NetAnimator mobility =========================================

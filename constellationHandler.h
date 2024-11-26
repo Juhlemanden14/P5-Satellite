@@ -9,6 +9,7 @@
 #include "ns3/netanim-module.h"
 
 #include "tleHandler.h"
+#include "SRFMath.h"
 
 using namespace ns3;
 
@@ -31,6 +32,8 @@ class Constellation {
 
         double maxGStoSatDistance = 5000.0; // km
         double minGSElevation = 5.0;        // in degrees above the horizon
+
+        double maxSatToSatDistance = 3000.0;
         double c = 299792458.0;             // speed of light (m/s)
 
         Ipv4AddressHelper satAddressHelper;
@@ -49,11 +52,22 @@ class Constellation {
         void updateConstellation();
 
     private:
-        typedef enum LinkType
-        {
+        typedef enum LinkType {
             GS_SAT = 0,
             SAT_SAT
         } LinkType;
+
+        typedef struct AngleRange {
+            double minAngle;
+            double maxAngle;
+        } AngleRange;
+
+        const AngleRange NetDeviceAngles[4] = {
+            { -45.0,  45.0 }, // NetDev1 forward
+            {  45.0, 135.0 }, // NetDev2 left
+            { 135.0, 225.0 }, // NetDev3 back
+            { 225.0, 315.0 }  // NetDev4 right
+        };
 
         // Queue for providing ipv4 addresses for inter satellite links.
         std::queue< std::pair<Ipv4Address, Ipv4Address> > linkAddressProvider;
@@ -100,6 +114,10 @@ class Constellation {
         return a bool telling us whether the link is allowed to exist or not. This is based on GS elevation angle and distance between sat and GS
         */
         bool gsIsLinkValid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
+
+        bool satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int netDeviceIndex, Ptr<SatSGP4MobilityModel> connMobilityModel, int connNetDeviceIndex);
+
+        void initializeIntraLinks();
 
 };
 

@@ -29,7 +29,6 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
 
     // Set satellite address helper, which is used to assign them Ipv4Addresses
     this->satAddressHelper.SetBase(Ipv4Address("2.0.0.0"), Ipv4Mask("255.255.255.0"));
-
 }
 
 NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string orbitsDataPath) {
@@ -176,12 +175,8 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     Ptr<Node> sat7 = Names::Find<Node>("STARLINK-30159");
     this->establishLink(sat6, 2, sat7, 2, 3000000, StringValue("20MBps"), SAT_SAT);
 
-    
-    Ptr<Node> sat2 = Names::Find<Node>("STARLINK-5706");
-    Ptr<Node> sat3 = Names::Find<Node>("STARLINK-30204");
-    for (int i = 0; i < 0; i++)
-        this->establishLink(sat2, 1, sat3, 1, 3000000, StringValue("20MBps"), SAT_SAT);
 
+    
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     // -------------------------------------------------
 
@@ -217,7 +212,8 @@ void Constellation::updateConstellation() {
 }
 
 
-void Constellation::updateGroundStationLinks() { // QUESTION: Technically, we want to break ALL invalid links before we start finding new links, right?!
+void Constellation::updateGroundStationLinks() {
+    // QUESTION: Technically, we want to break ALL invalid links before we start finding new links, right?!
 
     for (uint32_t gsIndex = 0; gsIndex < this->groundStationNodes.GetN(); gsIndex++) {
 
@@ -291,11 +287,11 @@ bool Constellation::gsIsLinkValid(Ptr<SatConstantPositionMobilityModel> GSMobMod
     double elevation = (Theta * 180 / pi ) - 90; // convert to degrees and subtract by 90 in order to get the elevation of the GS antenna
 
     if (elevation > this->minGSElevation && distance < (this->maxGStoSatDistance * 1000)) { // compare in meters
-        NS_LOG_DEBUG("link valid: true - Elevation: " << elevation << ", distance: " << distance / 1000 << " km");
+        // NS_LOG_DEBUG("link valid: true - Elevation: " << elevation << ", distance: " << distance / 1000 << " km");
         return true;
     }
     else {
-        NS_LOG_DEBUG("link valid: false - Elevation: " << elevation << ", distance: " << distance / 1000 << " km");
+        // NS_LOG_DEBUG("link valid: false - Elevation: " << elevation << ", distance: " << distance / 1000 << " km");
         return false;
     }
 }
@@ -500,3 +496,165 @@ void Constellation::releaseLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Addres
     // Reclaim the link address.
     this->linkAddressProvider.push(linkAddressPair);
 }
+
+
+
+void Constellation::initializeIntraLinks() {
+    // for plane in orbits:         // go through each orbital plane and try to establish valid links
+    //     for sat in plane:
+    //         get next sat in line. If at last index, get 0'th index as the next, completing the ring-loop
+    //         if (satIsLinkValid(currSatMobModel, 1, nextSatMobModel, 3)) {       // pseudocode for method below
+    //             connect sat netDev1 with next_sat netDev3 using establishLink()
+    //             continue        // go to next sat in the orbit
+    //         }
+    //         else {
+    //             add sat and netDev1 to pairs queue
+    //         }
+}
+
+
+bool Constellation::satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int netDeviceIndex, Ptr<SatSGP4MobilityModel> connMobilityModel, int connNetDeviceIndex) {
+    
+    // Check that the satellite is in range.
+    double distance = mobilityModel->GetDistanceFrom(connMobilityModel);
+    if ( distance > (this->maxSatToSatDistance * 1000) ) {
+        return false;       // return early if we get here
+    }
+    
+    // get angle from sat1 to sat2 and the other way around
+    std::pair<double, double> angles = getAngleFromSatPair(mobilityModel, connMobilityModel);   // angles.first is sat1 to sat2. Angles.second is the otwer way around
+    if (angles.first < -45) {
+        angles.first = abs(angles.first);
+        angles.first = 360 - angles.first;
+    }
+
+    if (angles.second < -45) {
+        angles.second = abs(angles.second);
+        angles.second = 360 - angles.second;
+    }
+    // NS_LOG_DEBUG("PAIR: " << angles.first << " | " << angles.second);
+    
+    // first check for sat1. Check negative cases and stop early if true
+    if (!(angles.first >= NetDeviceAngles[netDeviceIndex - 1].minAngle) || !(angles.first < NetDeviceAngles[netDeviceIndex - 1].maxAngle)) {
+        return false;        // return early if we get here
+    }
+
+    // then check for sat2
+    if (!(angles.second >= NetDeviceAngles[connNetDeviceIndex - 1].minAngle) || !(angles.second < NetDeviceAngles[connNetDeviceIndex - 1].maxAngle)) {
+        return false;        // return early if we get here
+    }
+
+    // if both checks passed, the link is valid
+    return true;
+}
+
+
+
+
+
+/* ========================= PSEUDO-CODE for updateInterSatelliteLinks =========================
+
+This can be made in a clever way with the following algorithm:
+ - on initialization of the constellation:
+    - make intraplane connections between sats - only if valid links
+    - keep track of pairs containing node and netDevIndex (std::pair<Ptr<node>, uint32_t>)
+
+ - during simulationLoop:
+    - loop1: Break impossible links - add newly available node/netDev pairs to same queue as before
+    - loop2: Go through queue and try to make connections between empty netDev's
+
+
+
+void Constellation::initializeIntraLinks() {
+    for plane in orbits:         // go through each orbital plane and try to establish valid links
+        for sat in plane:
+            get next sat in line. If at last index, get 0'th index as the next, completing the ring-loop
+            if (satIsLinkValid(currSatMobModel, 1, nextSatMobModel, 3)) {       // pseudocode for method below
+                connect sat netDev1 with next_sat netDev3 using establishLink()
+                continue        // go to next sat in the orbit
+            }
+            else {
+                add sat and netDev1 to pairs queue
+            }
+}
+
+void Constellation::updateSatelliteLinks() {
+
+    // LINK CHECKING AND PERHAPS BREAKING
+    for each satellite:                 // iterate over each sats 4 netdevices
+
+        get sat mobility model
+        get sat node
+
+        for each ISL netdevice:
+            if (has_existing_link(satNode, netDevIndex)) {      // rewrite GS_existing_link to be usable for sat-sat also
+                get connected satellite node                    // rewrite get_conn_sat to be usable for sat-sat also
+                get connected satellite netDev
+                get connected satellite mobility model          // same as GS-sat code
+                if (satIsLinkValid(currSatMobModel, currNetDev, connSatMobModel, connSatNetDev)) {     // see pseudocode for method below
+                    log maintained link
+                    continue                                    // if link still good, move on to next ISLL on sat
+                }
+                else {      // if link no longer good, break it
+                    log broken link
+                    destroyLink(satNode, netDevIndex)           // destroy the specific ISL
+                    add (satNode, satNetDev) and (connSatNode, connSatNetDev) to pair queue
+                }
+            }
+
+    // LINK ESTABLISHING
+    for each currSat,netDevIndex in pair queue:         // check possible connections between free netDevs
+        
+        get sat mobility model
+        get sat node
+        get sat netDevIndex
+
+        for each nextSat in pair queue excluding currSat:
+
+            get sat mobility model
+            get sat node
+            get sat netDevIndex
+
+            if (satIsLinkValid(currSatMobModel, currNetDev, nextSatMobModel, nextSatNetDev)) {     // see pseudocode for method below
+                establishLink()
+                break
+            }
+            else {      // if could not make link with nextSat, put it in the queue again
+                enqueue next pair again     // make sure that free (sat, netDevs)-pairs are put back in the queue
+            }
+}
+
+struct AngleRange {
+    double minAngle;
+    double maxAngle;
+};
+
+const AngleRange NetDeviceAngles[] = {
+    { -45.0,  45.0 }, // NetDev1
+    {  45.0, 135.0 }, // NetDev2
+    { 135.0, 225.0 }, // NetDev3
+    { 225.0, 315.0 }  // NetDev4
+};
+
+bool satIsLinkValid(currSatMobModel, currNetDev, connSatMobModel, connSatNetDev) {
+    // get angle from sat1 to sat2 and the other way around
+    angleSat1Sat2, angleSat2Sat1 = getAngleFromSatPair(currSatMobModel, connSatMobModel)
+    
+    // first check for sat1. Check negative cases and stop early if true
+    if ((!angleSat1Sat2 >= NetDeviceAngles[currNetDev - 1].minAngle) || (!angleSat1Sat2 < NetDeviceAngles[currNetDev - 1].maxAngle)) {
+        return false        // return early if we get here
+    }
+
+    // then check for sat2
+    if ((!angleSat2Sat1 >= NetDeviceAngles[currNetDev - 1]).minAngle || (!angleSat2Sat1 < NetDeviceAngles[currNetDev - 1].maxAngle)) {
+        return false        // return early if we get here
+    }
+
+    // if both checks passed, the link is valid
+    return true
+}
+
+
+
+
+*/
