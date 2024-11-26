@@ -63,7 +63,7 @@ class Constellation {
         std::pair<Ipv4Address, Ipv4Address> getLinkAddressPair();
 
         // Method for reclaiming a previously used address.
-        void reclaimLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Address linkAddress_1);
+        void releaseLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Address linkAddress_1);
 
         // Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
         // If used on a GS-sat link, GSnode should always be before satNode in parameters
