@@ -209,6 +209,10 @@ void Constellation::initializeIntraLinks() {
                         double distance = satMob->GetDistanceFrom(nextSatMob);
                         this->establishLink(satellite, n1, nextSatellite, n2, distance, SAT_SAT);
                     }
+                    // else {   // add non-used sat/netDev pairs to pair datastruct so that they can get a link during the updateSatelliteLinks()   
+                    // TODO: add non-used sat/netDev pairs to pair datastruct
+                    // 
+                    // }
                 }
 
             }
@@ -282,6 +286,8 @@ void Constellation::updateConstellation() {
 
 
     // At the end of each round, recompute the routing tables such that new links can be used, and broken ones are forgotten
+    // NS-3 specifies that one should call PopulateRoutingTables() as the first thing, and only subsequently call RecomputeRoutingTables()
+    // This does not seem to be a problem, so we ONLY use RecomputeRoutingTables without calling PopulateRoutingTables first!
     Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
     // POPULATE All satellites ARP tables :)
     NeighborCacheHelper neighborCacheHelper;
@@ -492,37 +498,6 @@ void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<No
         ipv4_2->RemoveAddress(node2NetDeviceIndex, 0);  // TODO: yet again, we assume that
     }
     return;
-
-    // Ptr<CsmaChannel> channelLink = DynamicCast<CsmaChannel>(node1->GetDevice(node1NetDeviceIndex)->GetChannel());  // Get the channel
-
-    // Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(channelLink->GetDevice(0));     // Get connected netDevice
-    // Ptr<Node> node = currCsmaNetDevice->GetNode();
-
-    // Ptr<CsmaChannel> currNullChannel = CreateObject<CsmaChannel>();
-    
-    // for (size_t nodeDevice = 1; nodeDevice < node->GetNDevices() - 1; ++nodeDevice) {
-
-    //     // Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();
-
-    //     // If we have selected the link that is currently connected.
-    //     if (node->GetDevice(nodeDevice)->GetChannel() == channelLink) {
-    //         // We create a pointer to the net device at the other end of the link
-    //         Ptr<CsmaNetDevice> otherCsmaNetDevice = DynamicCast<CsmaNetDevice>(node->GetDevice(nodeDevice));
-    //         // We attach it to the null channel
-    //         // otherCsmaNetDevice->Attach(nullChannel);
-    //         // nullChannel->Detach(otherCsmaNetDevice);
-    //         // And set down the interface
-    //         node->GetObject<Ipv4>()->SetDown(nodeDevice);
-    //     }
-    // }
-    
-    // // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
-    // // currCsmaNetDevice->Attach(currNullChannel);
-    // // currNullChannel->Detach(currCsmaNetDevice);
-    // node->GetObject<Ipv4>()->SetDown(node1NetDeviceIndex);  // TODO: How do we handle this??? Which interface are we disabling on the opposite end???
-    // channelLink->Dispose();
-
-    // return;   // indicating no error
 }
 
 // Get an address subnet pair for an inter satellite link.
@@ -654,6 +629,8 @@ void Constellation::updateSatelliteLinks() {
     // for () {
     //  brr   
     // }
+    // TODO add pair stuff
+    // ALSO, add the pairs
 }
 
 /* ========================= PSEUDO-CODE for updateInterSatelliteLinks =========================
