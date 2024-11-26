@@ -71,9 +71,17 @@ class Constellation {
         // If link type is sat-sat, they are both assigned an arbitrary IP address
         void establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceM, StringValue dataRate, LinkType linkType);
 
-        // Destroy the link pointed to by node1's netdevice (specified by index).
+        // Destroy the link between node1 and node2's netdevices (specified by index).
         // Makes sure to make all connected netdevices point to the NullChannel, avoiding dangling pointers
-        void destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, LinkType linkType);
+        // If used on a GS-sat link, GSnode should always be before satNode in parameters
+        // If link type is gs-sat, satellite is assigned an IP on the same subnet as the GS's already existing IP address
+        // If link type is sat-sat, they are both assigned an arbitrary IP address
+        void destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, LinkType linkType);
+
+        /**
+        Get the connected satellites node.
+        */
+        Ptr<NetDevice> getConnectedNetDev(Ptr<Node> GSNode, int netDevIndex);
 
         // ==================== Satellite specific functions ===================
         void updateInterSatelliteLinks();
@@ -82,23 +90,16 @@ class Constellation {
         // ==================== Ground station speecific =======================
         void updateGroundStationLinks();
 
-        bool checkGSLink(int gsIndex, double maxDistanceKM);
-
         /**
         Check if there is a channel connected to the GS's netdevice1, which has 2 connected NetDevices. this means a link exists.
         return true/false based on if the link exists
         */
-        bool GS_existing_link(Ptr<Node> GSNode);
-
-        /**
-        Get the connected satellites node.
-        */
-        Ptr<Node> GS_get_connected_sat(Ptr<Node> GSNode);
+        bool checkExistingLink(Ptr<Node> GSNode);
 
         /**
         return a bool telling us whether the link is allowed to exist or not. This is based on GS elevation angle and distance between sat and GS
         */
-        bool GS_is_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
+        bool gsIsLinkValid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
 
 };
 

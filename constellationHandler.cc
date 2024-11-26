@@ -30,22 +30,6 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
     // Set satellite address helper, which is used to assign them Ipv4Addresses
     this->satAddressHelper.SetBase(Ipv4Address("2.0.0.0"), Ipv4Mask("255.255.255.0"));
 
-    // DEMO DELETE LATER =====================================
-    std::pair<Ipv4Address, Ipv4Address> dummy = this->getLinkAddressPair(); // Gets 2.0.1.1, 2.0.1.2
-
-    this->releaseLinkAddressPair(dummy.first, dummy.second);
-
-    NS_LOG_DEBUG("Addr1: " << dummy.first << ", Addr2: " << dummy.second); 
-
-    dummy = this->getLinkAddressPair(); // Gets 2.0.1.1, 2.0.1.2
-
-    NS_LOG_DEBUG("Addr1: " << dummy.first << ", Addr2: " << dummy.second);
-
-    dummy = this->getLinkAddressPair(); // Gets 2.0.2.1, 2.0.2.2
-
-    NS_LOG_DEBUG("Addr1: " << dummy.first << ", Addr2: " << dummy.second);
-    // DEMO DELETE LATER =====================================
-
 }
 
 NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string orbitsDataPath) {
@@ -186,9 +170,20 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     // TESTING: establishing a link between 2 satellites!
     Ptr<Node> sat0 = Names::Find<Node>("STARLINK-30159");
     Ptr<Node> sat1 = Names::Find<Node>("STARLINK-5748");
+
     this->establishLink(sat0, 1, sat1, 1, 3000000, StringValue("20MBps"), SAT_SAT);
+    Ptr<Node> sat6 = Names::Find<Node>("STARLINK-5366");
+    Ptr<Node> sat7 = Names::Find<Node>("STARLINK-30159");
+    this->establishLink(sat6, 2, sat7, 2, 3000000, StringValue("20MBps"), SAT_SAT);
+
+    
+    Ptr<Node> sat2 = Names::Find<Node>("STARLINK-5706");
+    Ptr<Node> sat3 = Names::Find<Node>("STARLINK-30204");
+    for (int i = 0; i < 0; i++)
+        this->establishLink(sat2, 1, sat3, 1, 3000000, StringValue("20MBps"), SAT_SAT);
+
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-    // -------------------------------------------------   
+    // -------------------------------------------------
 
 
     // Update constellation for time 0 (before the Simulation starts)
@@ -222,7 +217,6 @@ void Constellation::updateConstellation() {
 }
 
 
-
 void Constellation::updateGroundStationLinks() { // QUESTION: Technically, we want to break ALL invalid links before we start finding new links, right?!
 
     for (uint32_t gsIndex = 0; gsIndex < this->groundStationNodes.GetN(); gsIndex++) {
@@ -231,18 +225,18 @@ void Constellation::updateGroundStationLinks() { // QUESTION: Technically, we wa
         Ptr<SatConstantPositionMobilityModel> gsMobModel = this->groundStationsMobilityModels[gsIndex];
         bool linkFound = false;                 // keep track of if any GS which doesnt get a link. That is bad (but okay)
 
-        if (this->GS_existing_link(gs)) {                         // if GS has an existing link, get the connected satellite
-            Ptr<Node> connectedSat = this->GS_get_connected_sat(gs);      // get connected satellites mobility model
+        if (this->checkExistingLink(gs)) {                         // if GS has an existing link, get the connected satellite
+            Ptr<Node> connectedSat = this->getConnectedNetDev(gs, 1)->GetNode();      // get connected satellites mobility model
             uint32_t satMobModelIndex = connectedSat->GetId();      // get the index of the satellite for use in the mobility model vector
             Ptr<SatSGP4MobilityModel> satMobModel = this->satelliteMobilityModels[satMobModelIndex];
 
-            if (this->GS_is_link_valid(gsMobModel, satMobModel)) {   // check if the link is still valid
+            if (this->gsIsLinkValid(gsMobModel, satMobModel)) {   // check if the link is still valid
                 NS_LOG_INFO("[+] Link maintained between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
                 linkFound = true;
                 continue;                                   // if still valid, continue to next GS
             }
             else {                                          // if no longer valid, break the link before making a new one
-                // destroyLink(gs, 1);                      // netDeviceIndex is always 1 for GS's
+                destroyLink(gs, 1, connectedSat, 5, GS_SAT);    // netDeviceIndex is always 1 for GS's, and 5 for sats
                 NS_LOG_INFO("[+] Link destroyed between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
             }
         }
@@ -253,7 +247,7 @@ void Constellation::updateGroundStationLinks() { // QUESTION: Technically, we wa
             uint32_t newSatMobModelIndex = newSat->GetId();
             Ptr<SatSGP4MobilityModel> newSatMobModel = this->satelliteMobilityModels[newSatMobModelIndex];
 
-            if (this->GS_is_link_valid(gsMobModel, newSatMobModel)) {    // check if a link from GS to sat could work, if yes establish it and move to next GS
+            if (this->gsIsLinkValid(gsMobModel, newSatMobModel)) {    // check if a link from GS to sat could work, if yes establish it and move to next GS
                 double distance = gsMobModel->GetDistanceFrom(newSatMobModel);
                 StringValue dataRate = StringValue("20MBps");   // TODO: find an appropriate dataRate
                 // Establish a GS_SAT link. GS NetDevice is always 1, while SAT NetDevice is always 5 
@@ -270,27 +264,7 @@ void Constellation::updateGroundStationLinks() { // QUESTION: Technically, we wa
     }
 }
 
-
-bool Constellation::GS_existing_link(Ptr<Node> GSNode) {   
-    if (GSNode->GetDevice(1)->GetChannel()->GetNDevices() == 2) {
-        return true;
-    }
-    return false;
-}
-
-Ptr<Node> Constellation::GS_get_connected_sat(Ptr<Node> GSNode) {
-    // hold GS netdevice for reference
-    Ptr<NetDevice> gsNetDev = GSNode->GetDevice(1);
-    for (int n=0; n < 2; n++) {
-        Ptr<NetDevice> netdevice = GSNode->GetDevice(1)->GetChannel()->GetDevice(n);
-        if (gsNetDev != netdevice)
-            return netdevice->GetNode();
-    }
-    return GSNode;  // never gets here, but this line makes the compiler happy
-}
-
-
-bool Constellation::GS_is_link_valid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel) {
+bool Constellation::gsIsLinkValid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel) {
     double distance = GSMobModel->GetDistanceFrom(satMobModel);     // in meters
     // calculate the angle between the GS and sat by extruding a triangle with the earths core in ECEF.
     Vector satPos = satMobModel->GetPosition();             // get ECEF pos for sat
@@ -321,10 +295,31 @@ bool Constellation::GS_is_link_valid(Ptr<SatConstantPositionMobilityModel> GSMob
         return true;
     }
     else {
+        NS_LOG_DEBUG("link valid: false - Elevation: " << elevation << ", distance: " << distance / 1000 << " km");
         return false;
     }
 }
 
+bool Constellation::checkExistingLink(Ptr<Node> node) {   
+    if (node->GetDevice(1)->GetChannel()->GetNDevices() == 2) {
+        return true;
+    }
+    return false;
+}
+
+
+Ptr<NetDevice> Constellation::getConnectedNetDev(Ptr<Node> GSNode, int netDevIndex) {
+    // hold GS netdevice for reference
+    Ptr<NetDevice> localNetDevice = GSNode->GetDevice(netDevIndex);
+    for (int n=0; n < 2; n++) {
+        // Grab one of the NetDevices on the Channel
+        Ptr<NetDevice> foreignNetDevice = localNetDevice->GetChannel()->GetDevice(n);
+        // If that NetDevice is NOT your own, it must be the other node
+        if (localNetDevice != foreignNetDevice)
+            return foreignNetDevice;
+    }
+    return localNetDevice;  // never gets here, but this line makes the compiler happy
+}
 
 
 void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceM, StringValue channelDataRate, LinkType linkType) {
@@ -365,11 +360,15 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
 
         NS_LOG_DEBUG("Groundstation current IP: " << gsIP << " -> New Satellite IP: " << satNewIP);
     }
-    else if (linkType == SAT_SAT) {      // linkType = SAT_SAT
-        Ipv4InterfaceAddress satNewAddr0 = Ipv4InterfaceAddress(Ipv4Address("2.0.0.1"), Ipv4Mask("255.255.255.0"));
-        Ipv4InterfaceAddress satNewAddr1 = Ipv4InterfaceAddress(Ipv4Address("2.0.0.2"), Ipv4Mask("255.255.255.0"));
+    else if (linkType == SAT_SAT) { // Is link is being  established
+        std::pair<Ipv4Address, Ipv4Address> addressPair = getLinkAddressPair();
+
+        Ipv4InterfaceAddress satNewAddr0 = Ipv4InterfaceAddress(addressPair.first, Ipv4Mask("255.255.255.0"));
+        Ipv4InterfaceAddress satNewAddr1 = Ipv4InterfaceAddress(addressPair.second, Ipv4Mask("255.255.255.0"));
         ipv4_1->AddAddress(node1NetDeviceIndex, satNewAddr0);
         ipv4_2->AddAddress(node2NetDeviceIndex, satNewAddr1);
+
+        NS_LOG_DEBUG("SAT1 IP: " << satNewAddr0.GetAddress() << " | SAT2 IP: " << satNewAddr1.GetAddress());
 
         // // ALTERNATIVE WAY TO ASSIGN IP ADDRESSES TO SATELLITES
         // NetDeviceContainer tmp = NetDeviceContainer(node1->GetDevice(node1NetDeviceIndex), node2->GetDevice(node2NetDeviceIndex));
@@ -380,45 +379,74 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
 }
 
 
-void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, LinkType linkType) {
+void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, LinkType linkType) {
+    // In this function we assume that there is a link to actually destroy!
+
     if (node1NetDeviceIndex > 5) {  // check if any indexes are out of bounds. GS's netDeviceIndex is always 1.
         NS_LOG_ERROR("Index out of bounds in destroyLink");
         return;
     }
-    NS_LOG_ERROR("destroyLink() method not properly implemented yet!");
 
-    if (linkType == SAT_SAT){}
+    // Get neccessary pointers for the local node
+    Ptr<NetDevice> netDev_1 = node1->GetDevice(node1NetDeviceIndex);
+    Ptr<Ipv4> ipv4_1 = node1->GetObject<Ipv4>();    
+    // Get necessary pointers for the foreign node 
+    Ptr<NetDevice> netDev_2 = node2->GetDevice(node2NetDeviceIndex);
+    Ptr<Ipv4> ipv4_2 = node2->GetObject<Ipv4>();
 
-    Ptr<CsmaChannel> channelLink = DynamicCast<CsmaChannel>(node1->GetDevice(node1NetDeviceIndex)->GetChannel());  // Get the channel
+    // TODO, if shit fucks up, check that Ipv4Interfaces and NetDeviceIndex's actually match. Maybe add more code
+    ipv4_1->SetDown( node1NetDeviceIndex );
+    ipv4_2->SetDown( node2NetDeviceIndex );
 
-    Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(channelLink->GetDevice(0));     // Get connected netDevice
-    Ptr<Node> node = currCsmaNetDevice->GetNode();
-
-    Ptr<CsmaChannel> currNullChannel = CreateObject<CsmaChannel>();
+    // Get the channel and dispose of it, freeing the memory, allegedly.
+    node1->GetDevice(node1NetDeviceIndex)->GetChannel()->Dispose();
     
-    for (size_t nodeDevice = 1; nodeDevice < node->GetNDevices() - 1; ++nodeDevice) {
+    // create new local NullChannels for each netDevice
+    Ptr<CsmaChannel> nullChannel1 = CreateObject<CsmaChannel>();
+    Ptr<CsmaChannel> nullChannel2 = CreateObject<CsmaChannel>();
+    DynamicCast<CsmaNetDevice>( node1->GetDevice(node1NetDeviceIndex) )->Attach(nullChannel1);
+    DynamicCast<CsmaNetDevice>( node2->GetDevice(node1NetDeviceIndex) )->Attach(nullChannel2);
 
-        // Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();
-
-        // If we have selected the link that is currently connected.
-        if (node->GetDevice(nodeDevice)->GetChannel() == channelLink) {
-            // We create a pointer to the net device at the other end of the link
-            Ptr<CsmaNetDevice> otherCsmaNetDevice = DynamicCast<CsmaNetDevice>(node->GetDevice(nodeDevice));
-            // We attach it to the null channel
-            // otherCsmaNetDevice->Attach(nullChannel);
-            // nullChannel->Detach(otherCsmaNetDevice);
-            // And set down the interface
-            node->GetObject<Ipv4>()->SetDown(nodeDevice);
-        }
+    // If GS_SAT, only remoove the SAT IP. If SAT_SAT, remove both their 
+    if (linkType == GS_SAT) {
+        ipv4_2->RemoveAddress(node2NetDeviceIndex, 0);  // TODO: yet again, we assume that netdevice Indexes are same as IPv4 indexes
+    } else if (linkType == SAT_SAT) {
+        releaseLinkAddressPair(ipv4_1->GetAddress(node1NetDeviceIndex, 0).GetAddress(), ipv4_2->GetAddress(node2NetDeviceIndex, 0).GetAddress());
+        ipv4_1->RemoveAddress(node1NetDeviceIndex, 0);  // TODO: yet again, we assume that netdevice Indexes are same as IPv4 indexes
+        ipv4_2->RemoveAddress(node2NetDeviceIndex, 0);  // TODO: yet again, we assume that
     }
-    
-    // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
-    // currCsmaNetDevice->Attach(currNullChannel);
-    // currNullChannel->Detach(currCsmaNetDevice);
-    node1->GetObject<Ipv4>()->SetDown(node1NetDeviceIndex);  // TODO: How do we handle this??? Which interface are we disabling on the opposite end???
-    channelLink->Dispose();
+    return;
 
-    return;   // indicating no error
+    // Ptr<CsmaChannel> channelLink = DynamicCast<CsmaChannel>(node1->GetDevice(node1NetDeviceIndex)->GetChannel());  // Get the channel
+
+    // Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(channelLink->GetDevice(0));     // Get connected netDevice
+    // Ptr<Node> node = currCsmaNetDevice->GetNode();
+
+    // Ptr<CsmaChannel> currNullChannel = CreateObject<CsmaChannel>();
+    
+    // for (size_t nodeDevice = 1; nodeDevice < node->GetNDevices() - 1; ++nodeDevice) {
+
+    //     // Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();
+
+    //     // If we have selected the link that is currently connected.
+    //     if (node->GetDevice(nodeDevice)->GetChannel() == channelLink) {
+    //         // We create a pointer to the net device at the other end of the link
+    //         Ptr<CsmaNetDevice> otherCsmaNetDevice = DynamicCast<CsmaNetDevice>(node->GetDevice(nodeDevice));
+    //         // We attach it to the null channel
+    //         // otherCsmaNetDevice->Attach(nullChannel);
+    //         // nullChannel->Detach(otherCsmaNetDevice);
+    //         // And set down the interface
+    //         node->GetObject<Ipv4>()->SetDown(nodeDevice);
+    //     }
+    // }
+    
+    // // Attach the netdevice of the node to a null channel, and delete the channel represents the actual link.
+    // // currCsmaNetDevice->Attach(currNullChannel);
+    // // currNullChannel->Detach(currCsmaNetDevice);
+    // node->GetObject<Ipv4>()->SetDown(node1NetDeviceIndex);  // TODO: How do we handle this??? Which interface are we disabling on the opposite end???
+    // channelLink->Dispose();
+
+    // return;   // indicating no error
 }
 
 // Get an address subnet pair for an inter satellite link.
@@ -440,13 +468,16 @@ std::pair<Ipv4Address, Ipv4Address> Constellation::getLinkAddressPair() {
         addr[2] = 1+this->linkSubnetCounter;
 
         // Increment the subnet counter so we do not reuse a subnet.
-        this->linkSubnetCounter++;
-
+        if (addr[2] == 253) {   // Skip the .254 and .255 subnets as they are broadcast addresses
+            this->linkSubnetCounter += 3; 
+        } else {
+            this->linkSubnetCounter++;
+        }
+        
+        // Convert the address bytes to an Ipv4Address
         linkPair.first = address.Deserialize(addr);
         addr[3]++;
         linkPair.second = address.Deserialize(addr);
-
-        //this->linkAddressProvider.push();
 
         return linkPair;
     }

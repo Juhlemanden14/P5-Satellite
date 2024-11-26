@@ -203,18 +203,15 @@ int main(int argc, char* argv[]) {
     udp.SetAttribute("Interval", StringValue("15s"));
     ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
     app.Start(Seconds(1.0));
-    app.Stop(Seconds(60*5));
+    app.Stop(Seconds(60*10));
 
     
     Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
     Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(2), routingStream);
 
 
-
-
-
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(60, 15);
+    LEOConstellation.simulationLoop(5, 15);
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
