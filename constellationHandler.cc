@@ -33,7 +33,7 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
     // DEMO DELETE LATER =====================================
     std::pair<Ipv4Address, Ipv4Address> dummy = this->getLinkAddressPair(); // Gets 2.0.1.1, 2.0.1.2
 
-    this->reclaimLinkAddressPair(dummy.first, dummy.second);
+    this->releaseLinkAddressPair(dummy.first, dummy.second);
 
     NS_LOG_DEBUG("Addr1: " << dummy.first << ", Addr2: " << dummy.second); 
 
@@ -460,7 +460,7 @@ std::pair<Ipv4Address, Ipv4Address> Constellation::getLinkAddressPair() {
     return linkPair;
 }
 
-void Constellation::reclaimLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Address linkAddress_1) {
+void Constellation::releaseLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Address linkAddress_1) {
     // Construct link address pair
     std::pair<Ipv4Address, Ipv4Address> linkAddressPair;
     linkAddressPair.first = linkAddress_0;
