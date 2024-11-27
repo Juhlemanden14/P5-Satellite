@@ -45,6 +45,7 @@ void ConnectSocket (Ptr<Socket> &socket, Ipv4Address destAddr, uint16_t destPort
 
 
 
+
 int main(int argc, char* argv[]) {
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
     LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_ALL);
@@ -90,13 +91,12 @@ int main(int argc, char* argv[]) {
 
 
 
-
     // ============================== APPLICATIONS ==============================
     UdpClientHelper udp(LEOConstellation.groundStationNodes.Get(1)->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress(), 7777); // Add remote addr and port
     udp.SetAttribute("Interval", StringValue("15s"));
     ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
-    app.Start(Seconds(1.0));
-    app.Stop(Seconds(60*10));
+    app.Start(Seconds(1));
+    app.Stop(Seconds(60*2));
 
     
     Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);

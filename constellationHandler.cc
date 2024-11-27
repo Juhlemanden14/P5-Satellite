@@ -24,6 +24,18 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
     // Set the eSAT_SAT and GS_SAT DataRates
     this->gsToSatDataRate = gsInputDataRate;
     this->satToSatDataRate = satInputDataRate;
+    
+    // Reserve memory for the vector.
+    this->availableSatNetDevices.reserve(this->satelliteCount);
+    
+
+    // TESTING PURPOSES 
+    // for (uint32_t n = 0; n < this->satelliteCount; ++n) {
+    //     for (uint32_t j = 0; j < this->availableSatNetDevices[n].size(); ++j) {
+    //         NS_LOG_UNCOND("Val: " << availableSatNetDevices[n][j]);
+    //     }
+    //     NS_LOG_UNCOND("\n");
+    // }
 
     // Create the satellites in the constellation.
     this->satelliteNodes = this->createSatellitesFromTLEAndOrbits(tleDataPath, orbitsDataPath);
@@ -62,8 +74,16 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
 
     // If no amount of satellites is specified, set it to the number of satellites in the orbit TLE data
     if ( (this->satelliteCount == 0) || (this->satelliteCount > this->TLEVector.size()) ) {
-        this->satelliteCount = this->TLEVector.size(); // Change this if you want to include all satellites from TLE data!
+        this->satelliteCount = this->TLEVector.size(); // Change this if you want to include all satellites from TLE data!   
     }
+
+    // populate the available netdevices since they are all available at this moment
+    for (uint32_t n = 0; n < this->satelliteCount; ++n) { 
+        std::vector<int> availableNetDevs = {1, 2, 3, 4};
+        this->availableSatNetDevices.emplace_back(availableNetDevs);
+    }
+
+
 
     // Create satellite nodes
     NodeContainer satellites(this->satelliteCount);
@@ -208,11 +228,22 @@ void Constellation::initializeIntraLinks() {
                     if (satIsLinkValid(satMob, n1, nextSatMob, n2)) {
                         double distance = satMob->GetDistanceFrom(nextSatMob);
                         this->establishLink(satellite, n1, nextSatellite, n2, distance, SAT_SAT);
+
+                        // remove netDevices from availableNetDevs vector using satIndexes and the netdeviceIndex - 1
+                        int satIndex = satellite->GetId();
+                        for (uint32_t i = 0; i < this->availableSatNetDevices[satIndex].size(); i++) {   // loop through to find the relevant index to remove at
+                            if (this->availableSatNetDevices[satIndex][i] == (int)n1) {
+                                this->availableSatNetDevices[satIndex].erase(this->availableSatNetDevices[satIndex].begin() + i);
+                            }
+                        }
+                        // same procedure for both satellites
+                        int nextSatIndex = nextSatellite->GetId();
+                        for (uint32_t i = 0; i < this->availableSatNetDevices[nextSatIndex].size(); i++) {
+                            if (this->availableSatNetDevices[nextSatIndex][i] == (int)n2) {
+                                this->availableSatNetDevices[nextSatIndex].erase(this->availableSatNetDevices[nextSatIndex].begin() + i);
+                            }
+                        }
                     }
-                    // else {   // add non-used sat/netDev pairs to pair datastruct so that they can get a link during the updateSatelliteLinks()   
-                    // TODO: add non-used sat/netDev pairs to pair datastruct
-                    // 
-                    // }
                 }
 
             }
@@ -616,22 +647,50 @@ void Constellation::updateSatelliteLinks() {
                     continue;       // move on ot next netdevice for this satellite
                 }
                 else {
-                    NS_LOG_DEBUG("Link BROKEN satellites <" << Names::FindName(satNode) << "> - <" << Names::FindName(connSatNode) << ">");
+                    NS_LOG_DEBUG("Link BROKEN between satellites <" << Names::FindName(satNode) << "> - <" << Names::FindName(connSatNode) << ">");
                     destroyLink(satNode, netDevIndex, connSatNode, connNetDevIndex, SAT_SAT);
-                    // TODO: add (satNode, satNetDev) and (connSatNode, connSatNetDev) to free pairs 
+                    NS_LOG_DEBUG("used netDevs: " << netDevIndex << ", " << connNetDevIndex);
+
+                    // remove netDevices from availableNetDevs vector using satIndexes and the netdeviceIndex - 1
+                    int satIndex = satNode->GetId();
+                    this->availableSatNetDevices[satIndex].emplace_back(netDevIndex);
+
+                    // same procedure for both satellites
+                    int connSatIndex = connSatNode->GetId();
+                    this->availableSatNetDevices[connSatIndex].emplace_back(connNetDevIndex);
+
+
+                    // NS_LOG_DEBUG("new available list for sat1: ");
+                    // for (uint32_t n = 0; n < this->availableSatNetDevices[satIndex].size(); n++) {
+                    //     NS_LOG_DEBUG(n << " = " << this->availableSatNetDevices[satIndex][n]);
+                    // }
+
+                    // NS_LOG_DEBUG("new available list for sat2: ");
+                    // for (uint32_t n = 0; n < this->availableSatNetDevices[connSatIndex].size(); n++) {
+                    //     NS_LOG_DEBUG(n << " = " << this->availableSatNetDevices[connSatIndex][n]);
+                    // }
+
                 }
 
             }
         }
     }
+ 
+
+
     
     // link establishment
-    // for () {
-    //  brr   
-    // }
+    for (uint32_t satIndex = 0; satIndex < this->availableSatNetDevices.size(); ++satIndex) {
+        
+    }
     // TODO add pair stuff
     // ALSO, add the pairs
 }
+
+
+
+
+
 
 /* ========================= PSEUDO-CODE for updateInterSatelliteLinks =========================
 

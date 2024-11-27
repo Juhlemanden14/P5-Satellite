@@ -73,6 +73,9 @@ class Constellation {
         StringValue satToSatDataRate;
         StringValue gsToSatDataRate;
 
+        // The available net devices of the satellites.
+        std::vector< std::vector<int> > availableSatNetDevices;
+
         // Queue for providing ipv4 addresses for inter satellite links.
         std::queue< std::pair<Ipv4Address, Ipv4Address> > linkAddressProvider;
         int linkSubnetCounter = 0;
