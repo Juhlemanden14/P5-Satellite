@@ -185,12 +185,15 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
 
 
 void Constellation::initializeIntraLinks() {
+    // A counter used to keep track of the satellites ID
     uint32_t counter = 0;
-
+    
+    // For each orbit
     for (size_t i = 0; i < this->OrbitVector.size(); ++i) {
         NS_LOG_DEBUG("ORBIT " << i+1 << "/" << this->OrbitVector.size());
         Orbit orbit = OrbitVector[i];
         
+        // For each satellite in each orbit
         for (size_t j = 0; j < orbit.satellites.size(); ++j) {
             NS_LOG_DEBUG("  SAT " << j+1 << "/" << orbit.satellites.size());
 
@@ -287,7 +290,6 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     // Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     // -------------------------------------------------
 
-
     // Update constellation for time 0 (before the Simulation starts)
     this->updateConstellation();
 
@@ -312,8 +314,24 @@ void Constellation::updateConstellation() {
     }
 
     this->updateGroundStationLinks();
-    this->updateSatelliteLinks();
+    // this->updateSatelliteLinks();
 
+
+    // // TESTING
+    // Ptr<Node> testSat = Names::Find<Node>("STARLINK-30146");
+    // Ptr<Ipv4> ipv4 = testSat->GetObject<Ipv4>();
+    // NS_LOG_DEBUG("STARLINK-30146 DEBUGGING");
+    // NS_LOG_DEBUG("Number of interfaces " << ipv4->GetNInterfaces());
+    // for (uint32_t i = 0; i < ipv4->GetNInterfaces() - 1; i++) {
+    //     for (uint32_t j = 0; j < this->availableSatNetDevices[ testSat->GetId() ].size(); j++) {
+    //         if (!(this->availableSatNetDevices[testSat->GetId()][j] == (int)i )) {
+    //             NS_LOG_DEBUG("Address " << i << " " << ipv4->GetAddress(i, 0).GetAddress());
+    //         }
+    //     }
+    // }
+    // Ptr<Node> otherTestSat = Names::Find<Node>("STARLINK-5714");
+    // this->
+    //
 
 
     // At the end of each round, recompute the routing tables such that new links can be used, and broken ones are forgotten
@@ -474,7 +492,7 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
         ipv4_1->AddAddress(node1NetDeviceIndex, satNewAddr0);
         ipv4_2->AddAddress(node2NetDeviceIndex, satNewAddr1);
 
-        NS_LOG_DEBUG("      SAT1 IP: " << satNewAddr0.GetAddress() << " -> " << Names::FindName(node1) << " | SAT2 IP: " << satNewAddr1.GetAddress() << " -> " << Names::FindName(node2));
+        NS_LOG_DEBUG("      " << Names::FindName(node1) << " IP: " << satNewAddr0.GetAddress() << " <--> "  << Names::FindName(node2) << " IP: " << satNewAddr1.GetAddress());
 
 
         // // ALTERNATIVE WAY TO ASSIGN IP ADDRESSES TO SATELLITES
@@ -484,6 +502,9 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
 
         channel->SetAttribute("DataRate", this->satToSatDataRate);
     }
+    // Dispose of the null channels!
+    DynamicCast<CsmaNetDevice>(node1->GetDevice(node1NetDeviceIndex))->GetChannel()->Dispose();
+    DynamicCast<CsmaNetDevice>(node2->GetDevice(node2NetDeviceIndex))->GetChannel()->Dispose();
 
     // Attach nodes to the same csma channel.
     DynamicCast<CsmaNetDevice>(node1->GetDevice(node1NetDeviceIndex))->Attach(channel);
@@ -677,11 +698,73 @@ void Constellation::updateSatelliteLinks() {
     }
  
 
-
-    
+    // keep track of which indecies to remove from the sat in the outermost loop. 
+    // They canonly be removed AFTER checks for the sats netdevices are all done.
+    std::vector<int> netDevIndeciesToRemove = {};
     // link establishment
-    for (uint32_t satIndex = 0; satIndex < this->availableSatNetDevices.size(); ++satIndex) {
-        
+    for (uint32_t satIndex = 0; satIndex < this->availableSatNetDevices.size(); ++satIndex) {   // lop through sats
+
+
+        // get node and mobilityModel for this satellite
+        Ptr<Node> satNode = this->satelliteNodes.Get(satIndex);
+        Ptr<SatSGP4MobilityModel> satMobModel = this->satelliteMobilityModels[satIndex];
+
+        for (uint32_t netDevIndex = 0; netDevIndex < this->availableSatNetDevices[satIndex].size(); ++netDevIndex) {    // loo through sat's netDevices
+            
+            bool connected = false;     // keep track o if this netdevice gets a connection
+
+            for (uint32_t connSatIndex = 0; connSatIndex < this->availableSatNetDevices.size(); ++connSatIndex) {   // loop through potential sats to connect to
+                if (connSatIndex == satIndex) {
+                    // Skip so we do not select net devices on the same satellite.
+                    continue;
+                }
+
+                // get node and mobilityModel for this satellite
+                Ptr<Node> connSatNode = this->satelliteNodes.Get(connSatIndex);
+                Ptr<SatSGP4MobilityModel> connSatMobModel = this->satelliteMobilityModels[connSatIndex];
+
+                // loop through "potential sat to connect to"'s netdevices
+                for (uint32_t connNetDevIndex = 0; connNetDevIndex < this->availableSatNetDevices[connSatIndex].size(); ++connNetDevIndex) {
+                    
+                    int satFreeNetDev = availableSatNetDevices[satIndex][netDevIndex];
+                    int connSatFreeNetDev = availableSatNetDevices[connSatIndex][connNetDevIndex];
+                    
+                    if (this->satIsLinkValid(satMobModel, satFreeNetDev, connSatMobModel, connSatFreeNetDev)) {
+                        
+                        // If link is valid, create a link and remove both netDevices from the available vector
+                        double distance = satMobModel->GetDistanceFrom(connSatMobModel);
+                        // NS_LOG_UNCOND("Coordinates of sat1 with new link: " << satMobModel->GetPosition());
+                        NS_LOG_DEBUG("[+] Creating new sat link connection between sat [ " << Names::FindName(satNode) << " ].netDev[ " << satFreeNetDev << " ] and sat [ " << Names::FindName(connSatNode) << " ].netDev[ " << connSatFreeNetDev << " ]   COORDS: " << satMobModel->GetGeoPosition());
+                        this->establishLink(satNode, satFreeNetDev, connSatNode, connSatFreeNetDev, distance, SAT_SAT);
+                        connected = true;   // tell the 2 loop that the netdevice now has a connection
+
+                        // remove the now taken connNetDevice. We wait with removing the satNode's netDev, so that we dont get indexing errors
+                        for (uint32_t i = 0; i < this->availableSatNetDevices[connSatIndex].size(); i++) {   // loop through to find the relevant index to remove at
+                            if (this->availableSatNetDevices[connSatIndex][i] == (int)connSatFreeNetDev) {
+                                this->availableSatNetDevices[connSatIndex].erase(this->availableSatNetDevices[connSatIndex].begin() + i);
+                            }
+                        }
+                        break;  // after removing, break loop since 2 sats will never be able to connect more netDevices anyway (angles)
+
+
+                    }
+                }
+
+                if (connected) {
+                    break;
+                }
+            }
+
+            if (connected) {
+                netDevIndeciesToRemove.emplace_back(netDevIndex);
+                continue;       // continue to sat's next netdevice and try to find a link for that one
+            }
+        }
+
+        for (uint32_t i = 0; i < netDevIndeciesToRemove.size(); i++) {   // loop through to find the relevant index to remove at
+            this->availableSatNetDevices[satIndex].erase(this->availableSatNetDevices[satIndex].begin() + netDevIndeciesToRemove[i]);
+        }
+        netDevIndeciesToRemove.clear();
     }
     // TODO add pair stuff
     // ALSO, add the pairs

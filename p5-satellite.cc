@@ -70,7 +70,9 @@ int main(int argc, char* argv[]) {
     // Ground station coordinates:
     std::vector<GeoCoordinate> groundStationsCoordinates;
     // -25.8872, 27.7077, 1540 -- Hartebeesthoek, South Africa
-    groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
+    //groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
+    // 8.965719363937712, -31.654778506938765
+    groundStationsCoordinates.emplace_back(GeoCoordinate(8.965719363937712, -31.654778506938765, 50));
     // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
     //groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
     groundStationsCoordinates.emplace_back(GeoCoordinate(40.5931930, 152.1042000, 71));
@@ -104,7 +106,7 @@ int main(int argc, char* argv[]) {
 
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(10, 15);
+    LEOConstellation.simulationLoop(50, 15);
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
