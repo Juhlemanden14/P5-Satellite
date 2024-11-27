@@ -65,37 +65,33 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("satCount", "The amount of satellites", satelliteCount);
     cmd.Parse(argc, argv);
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
-    // ==========================================================================================================================
+    // ========================================================================
     
 
-    // ========================================= Constellation handling and node Setup =========================================
+    // ============ Constellation handling and node Setup ============
     // Ground station coordinates:
     std::vector<GeoCoordinate> groundStationsCoordinates;
-    // -25.8872, 27.7077, 1540 -- Hartebeesthoek, South Africa
+    
+    // Hartebeesthoek, South Africa
     // groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
 
-    // 8.965719363937712, -31.654778506938765
+    // Atlantic Ocean (left mid)
     groundStationsCoordinates.emplace_back(GeoCoordinate(8.965719363937712, -31.654778506938765, 50));
 
-    // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
+    // Tea Gardens, New South Wales Australia
     // groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
 
-
-    // TEMPORARY
+    // Ocean (right top)
     groundStationsCoordinates.emplace_back(GeoCoordinate(40.5931930, 152.1042000, 71));
-    // groundStationsCoordinates.emplace_back(GeoCoordinate(-10, 100.1042000, 500));
+    // ================================================================
 
-    // Setup constellation.
+
+    // ======================== Setup constellation ========================
     Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, groundStationsCoordinates.size(), groundStationsCoordinates, StringValue("20Mbps"), StringValue("20Mbps"));
+    // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
+    LEOConstellation.simulationLoop(0, 15);
 
-    // ========================= TCP CWND TRACE TEST ========================
-    // Simulator::Schedule(MilliSeconds(1), &TraceCwnd, groundStations, 1 + satelliteCount, 0);
-    // *-*-*-*-* VERY IMPORTANT *-*-*-*-*
-    /* The tracer's "NodeList" is the total amount of nodes, because the satellite,
-       nodes are setup before the ground stations. Therefore to trace a specific socket,
-       we need to add the satellite count ot the index of the node.
-    */
-    // --------------------------------------
+
 
 
 
@@ -108,14 +104,19 @@ int main(int argc, char* argv[]) {
     UdpServerHelper udpS(7777);
     app = udpS.Install(LEOConstellation.groundStationNodes.Get(1));
     app.Stop(Seconds(60*2));
+    
+     // ========================= TCP CWND TRACE TEST ========================
+    // Simulator::Schedule(MilliSeconds(1), &TraceCwnd, groundStations, 1 + satelliteCount, 0);
+    // *-*-*-*-* VERY IMPORTANT *-*-*-*-*
+    /* The tracer's "NodeList" is the total amount of nodes, because the satellite,
+       nodes are setup before the ground stations. Therefore to trace a specific socket,
+       we need to add the satellite count ot the index of the node.
+    */
+    // --------------------------------------
 
     
-    Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
-    Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(2), routingStream);
 
-
-    // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(10, 15);
+   
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
@@ -124,8 +125,7 @@ int main(int argc, char* argv[]) {
         GeoCoordinate gsNpos = LEOConstellation.groundStationsMobilityModels[n]->GetGeoPosition();
         AnimationInterface::SetConstantPosition(LEOConstellation.groundStationNodes.Get(n), gsNpos.GetLongitude(), -gsNpos.GetLatitude());
     }
-    
-    // Run NetAnim from the P5-Satellite folder
+    // Run NetAnim from the ns3-find (ns3 root)
     AnimationInterface anim("scratch/P5-Satellite/out/p5-satellite.xml");
     // anim.EnablePacketMetadata();
     anim.SetBackgroundImage("scratch/P5-Satellite/resources/earth-map.jpg", -180, -90, 0.17578125, 0.17578125, 1);
@@ -142,6 +142,13 @@ int main(int argc, char* argv[]) {
     anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(0), "Hartebeesthoek");
     anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(1), "Tea Gardens");
     // ==================================================================================================================
+
+
+
+    // ============== Routing Tables Output ==============
+    Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
+    Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(2), routingStream);
+
 
 
     NS_LOG_UNCOND("");
