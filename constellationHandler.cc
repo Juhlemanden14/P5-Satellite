@@ -18,6 +18,8 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
     // Needed to avoid address collision. (Simulator issue, not real address collision)
     Ipv4AddressGenerator::TestMode();
 
+    Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("20Mbps"));
+    
     this->satelliteCount = satCount;
     this->groundStationCount = gsCount;
 
@@ -94,9 +96,11 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
     stackHelper.Install(satellites);
     NS_LOG_INFO("[+] Internet stack installed on satellites");
 
-    CsmaHelper csmaHelper;
+    PointToPointHelper p2pHelper;
     std::string formatted_TLE;
 
+
+    Ptr<Node> dummyNode = CreateObject<Node>();
     // Loop through each satellite and set them up
     for (uint32_t n = 0; n < this->satelliteCount; ++n) {
         Ipv4AddressHelper tmpAddrHelper;
@@ -106,8 +110,10 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
         for (int i = 1; i <= 5; ++i) {
             Ptr<Node> currentSat = satellites.Get(n);
             Ptr<Ipv4> satIpv4 = currentSat->GetObject<Ipv4>();
-            // Use .Install() to get both a CsmaNetDevice and a Channel on a new NetDevice
-            Ptr<NetDevice> device = csmaHelper.Install(currentSat).Get(0);
+            // Use .Install() to get both a PointToPointNetDevice and a Channel on a new NetDevice
+            
+            Ptr<NetDevice> device = p2pHelper.Install(NodeContainer(currentSat, dummyNode)).Get(0);
+
             // This is to utilize the importance of the assign() function, while ensuring that they do not have an IP address afterwards
             // So we just assign an arbitrary address to each satellite, and then remove that address right after
             tmpAddrHelper.Assign(device);
@@ -117,9 +123,9 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
             // Delete the channel (free memory)
             device->GetChannel()->Dispose();
             // Make sure that channel pointer is pointing to the null channel, since channel is now destroyed
-            Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(device);
-            Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();
-            currCsmaNetDevice->Attach(nullChannel);
+            Ptr<PointToPointNetDevice> currP2pNetDevice = DynamicCast<PointToPointNetDevice>(device);
+            Ptr<PointToPointChannel> nullChannel = CreateObject<PointToPointChannel>();
+            currP2pNetDevice->Attach(nullChannel);
         }
 
         // Create and aggregate the Satellite SGP4 mobility model to each satellite
@@ -136,7 +142,7 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
         Names::Add(this->TLEVector[n].name, satellites.Get(n));
 
         // IMPORTANT: When enabling this pcap trace, it will create 5 pcap files FOR EACH satellite. If running with many satellites, this might slow down your run substantiually
-        // csmaHelper.EnablePcap("scratch/P5-Satellite/out/satellite", satellites, true);
+        // p2pHelper.EnablePcap("scratch/P5-Satellite/out/satellite", satellites, true);
     }
 
     return satellites;
@@ -151,15 +157,17 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
     stackHelper.Install(groundStations);
     NS_LOG_INFO("[+] Internet stack installed on groundstations");
     
-    CsmaHelper csmaHelper;
+    PointToPointHelper p2pHelper;
     // Groundstations have static IP addresses, therefore we simply assign them here and never remove the address from their interface
     Ipv4AddressHelper gsAddressHelper;
     gsAddressHelper.SetBase("1.0.0.0", "255.255.255.0");
 
+    Ptr<Node> dummyNode = CreateObject<Node>();
     // For each ground station, set up its mobi
     for (size_t n = 0; n < this->groundStationCount; ++n) {
         // Create the single netdevice on each ground station
-        NetDeviceContainer gsNetDevice = csmaHelper.Install(groundStations.Get(n));
+        NetDeviceContainer gsNetDevice = p2pHelper.Install(NodeContainer(groundStations.Get(n), dummyNode) ).Get(0);
+
         // Assign an ip to the ground station but turn the interface down!
         gsAddressHelper.Assign(gsNetDevice);
         groundStations.Get(n)->GetObject<Ipv4>()->SetDown(1);
@@ -167,9 +175,9 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
         gsAddressHelper.NewNetwork();
 
         // Finally, attach to nullchannel as its not connected to anything
-        Ptr<CsmaNetDevice> currCsmaNetDevice = DynamicCast<CsmaNetDevice>(gsNetDevice.Get(0));
-        Ptr<CsmaChannel> nullChannel = CreateObject<CsmaChannel>();
-        currCsmaNetDevice->Attach(nullChannel);
+        Ptr<PointToPointNetDevice> currP2PNetDevice = DynamicCast<PointToPointNetDevice>(gsNetDevice.Get(0));
+        Ptr<PointToPointChannel> nullChannel = CreateObject<PointToPointChannel>();
+        currP2PNetDevice->Attach(nullChannel);
         gsNetDevice.Get(0)->GetChannel()->Dispose();
 
         // GroundStation mobility even though they dont move. The mobility models allows use of methods like .GetDistanceFrom(GS) etc.
@@ -178,7 +186,7 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
         this->groundStationsMobilityModels.emplace_back(GSMobility);
     }
     NS_LOG_DEBUG("[+] SatConstantPositionMobilityModel installed on " << groundStations.GetN() << " ground stations");
-    csmaHelper.EnablePcap("scratch/P5-Satellite/out/ground-station", groundStations, true);
+    p2pHelper.EnablePcap("scratch/P5-Satellite/out/ground-station", groundStations, true);
 
     return groundStations;
 }
@@ -285,11 +293,8 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     // this->establishLink(sat6, 2, sat7, 2, 3000000, SAT_SAT);
 
 
-    this->initializeIntraLinks();
-    
-    // Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-    // -------------------------------------------------
 
+    this->initializeIntraLinks();
     // Update constellation for time 0 (before the Simulation starts)
     this->updateConstellation();
 
@@ -314,7 +319,7 @@ void Constellation::updateConstellation() {
     }
 
     this->updateGroundStationLinks();
-    // this->updateSatelliteLinks();
+    this->updateSatelliteLinks();
 
 
     // // TESTING
@@ -337,10 +342,13 @@ void Constellation::updateConstellation() {
     // At the end of each round, recompute the routing tables such that new links can be used, and broken ones are forgotten
     // NS-3 specifies that one should call PopulateRoutingTables() as the first thing, and only subsequently call RecomputeRoutingTables()
     // This does not seem to be a problem, so we ONLY use RecomputeRoutingTables without calling PopulateRoutingTables first!
+    NS_LOG_DEBUG("Computing tables");
     Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
-    // POPULATE All satellites ARP tables :)
-    NeighborCacheHelper neighborCacheHelper;
-    neighborCacheHelper.PopulateNeighborCache();
+    NS_LOG_DEBUG("DONE with tables");
+    // POPULATE All satellites ARP tables :). THIS IS ONLY VALID FOR CSMA LINKS, NOT FOR POINT TO POINT
+    // NeighborCacheHelper neighborCacheHelper;
+    // neighborCacheHelper.PopulateNeighborCache();
+    // NS_LOG_DEBUG("DONE with cache");
 }
 
 
@@ -456,7 +464,7 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
         return;
     }
 
-    Ptr<CsmaChannel> channel = CreateObject<CsmaChannel>();
+    Ptr<PointToPointChannel> channel = CreateObject<PointToPointChannel>();
     double channelDelay = distanceM / c;  // seconds
     channel->SetAttribute("Delay", TimeValue( Seconds(channelDelay) ));
     
@@ -482,7 +490,7 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
 
         NS_LOG_DEBUG("Groundstation current IP: " << gsIP << " -> New Satellite IP: " << satNewIP);
 
-        channel->SetAttribute("DataRate", this->gsToSatDataRate);
+        //channel->SetAttribute("DataRate", this->gsToSatDataRate);
     }
     else if (linkType == SAT_SAT) { // Is link is being  established
         std::pair<Ipv4Address, Ipv4Address> addressPair = getLinkAddressPair();
@@ -500,15 +508,15 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
         // this->satAddressHelper.Assign(tmp);
         // this->satAddressHelper.NewNetwork();
 
-        channel->SetAttribute("DataRate", this->satToSatDataRate);
+        //channel->SetAttribute("DataRate", this->satToSatDataRate);
     }
     // Dispose of the null channels!
-    DynamicCast<CsmaNetDevice>(node1->GetDevice(node1NetDeviceIndex))->GetChannel()->Dispose();
-    DynamicCast<CsmaNetDevice>(node2->GetDevice(node2NetDeviceIndex))->GetChannel()->Dispose();
+    DynamicCast<PointToPointNetDevice>(node1->GetDevice(node1NetDeviceIndex))->GetChannel()->Dispose();
+    DynamicCast<PointToPointNetDevice>(node2->GetDevice(node2NetDeviceIndex))->GetChannel()->Dispose();
 
-    // Attach nodes to the same csma channel.
-    DynamicCast<CsmaNetDevice>(node1->GetDevice(node1NetDeviceIndex))->Attach(channel);
-    DynamicCast<CsmaNetDevice>(node2->GetDevice(node2NetDeviceIndex))->Attach(channel);
+    // Attach nodes to the same P2P channel.
+    DynamicCast<PointToPointNetDevice>(node1->GetDevice(node1NetDeviceIndex))->Attach(channel);
+    DynamicCast<PointToPointNetDevice>(node2->GetDevice(node2NetDeviceIndex))->Attach(channel);
 
 }
 
@@ -536,10 +544,10 @@ void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<No
     node1->GetDevice(node1NetDeviceIndex)->GetChannel()->Dispose();
     
     // create new local NullChannels for each netDevice
-    Ptr<CsmaChannel> nullChannel1 = CreateObject<CsmaChannel>();
-    Ptr<CsmaChannel> nullChannel2 = CreateObject<CsmaChannel>();
-    DynamicCast<CsmaNetDevice>( node1->GetDevice(node1NetDeviceIndex) )->Attach(nullChannel1);
-    DynamicCast<CsmaNetDevice>( node2->GetDevice(node2NetDeviceIndex) )->Attach(nullChannel2);
+    Ptr<PointToPointChannel> nullChannel1 = CreateObject<PointToPointChannel>();
+    Ptr<PointToPointChannel> nullChannel2 = CreateObject<PointToPointChannel>();
+    DynamicCast<PointToPointNetDevice>( node1->GetDevice(node1NetDeviceIndex) )->Attach(nullChannel1);
+    DynamicCast<PointToPointNetDevice>( node2->GetDevice(node2NetDeviceIndex) )->Attach(nullChannel2);
 
     // If GS_SAT, only remoove the SAT IP. If SAT_SAT, remove both their 
     if (linkType == GS_SAT) {
@@ -643,6 +651,7 @@ bool Constellation::satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int 
 }
 
 void Constellation::updateSatelliteLinks() {
+    NS_LOG_DEBUG("[+] updateSatelliteLinks() -----------");
     // Iterate over each satellite
     for (uint32_t i = 0; i < this->satelliteCount; i++) {
 

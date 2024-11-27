@@ -5,7 +5,8 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/netanim-module.h"
 // #include "ns3/satellite-module.h"
-#include "ns3/csma-module.h"    // needed for dynamic cast to csmaNetDevice
+#include "ns3/csma-module.h"
+
 
 #include "tleHandler.h"
 #include "constellationHandler.h"
@@ -47,6 +48,7 @@ void ConnectSocket (Ptr<Socket> &socket, Ipv4Address destAddr, uint16_t destPort
 
 
 int main(int argc, char* argv[]) {
+    // Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
     LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_ALL);
     
@@ -70,14 +72,18 @@ int main(int argc, char* argv[]) {
     // Ground station coordinates:
     std::vector<GeoCoordinate> groundStationsCoordinates;
     // -25.8872, 27.7077, 1540 -- Hartebeesthoek, South Africa
-    //groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
+
     // 8.965719363937712, -31.654778506938765
     groundStationsCoordinates.emplace_back(GeoCoordinate(8.965719363937712, -31.654778506938765, 50));
+
     // -32.5931930, 152.1042000, 71 -- Tea Gardens, New South Wales Australia
-    //groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
+
+
+    // TEMPORARY
     groundStationsCoordinates.emplace_back(GeoCoordinate(40.5931930, 152.1042000, 71));
-    // Temporary
-    //groundStationsCoordinates.emplace_back(GeoCoordinate(-10, 100.1042000, 500));
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(-10, 100.1042000, 500));
 
     // Setup constellation.
     Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, groundStationsCoordinates.size(), groundStationsCoordinates, StringValue("20Mbps"), StringValue("20Mbps"));
@@ -99,6 +105,9 @@ int main(int argc, char* argv[]) {
     ApplicationContainer app = udp.Install(LEOConstellation.groundStationNodes.Get(0));
     app.Start(Seconds(1));
     app.Stop(Seconds(60*2));
+    UdpServerHelper udpS(7777);
+    app = udpS.Install(LEOConstellation.groundStationNodes.Get(1));
+    app.Stop(Seconds(60*2));
 
     
     Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
@@ -106,7 +115,7 @@ int main(int argc, char* argv[]) {
 
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(50, 15);
+    LEOConstellation.simulationLoop(10, 15);
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
