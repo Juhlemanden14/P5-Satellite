@@ -53,6 +53,8 @@ void SetupTracing(Ptr<Node> node) {
         // This allows us to pass in additional method parameters beyond the one that CongestionWindow supports!
         // Genius for logging!
         socketBase->TraceConnectWithoutContext("CongestionWindow", MakeBoundCallback(&CwndTraceSink, logStream, node->GetId(), socketIndex));
+        // TODO, PLOT THIS ALSO
+        // socketBase->TraceConnectWithoutContext("RTT")
 
         // ======== ADDITIONAL SHIT IF NEEDED LATER ========
         // Setting socket MinRTO
@@ -85,26 +87,36 @@ int main(int argc, char* argv[]) {
     std::string tleDataPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt";
     std::string tleOrbitsPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt";
     uint32_t satelliteCount = 2;
+    int simTime = 10;
+    int updateInterval = 15;
+    
     double bitErrorRate = 10e-9;
     std::string satSatDataRate("20Mbps");
     std::string gsSatDataRate("20Mbps");
-    int simTime = 10;
-    int updateInterval = 15;
     std::string linkAcqTime("2s");
+    std::string congestionCA = "TcpNewReno";
     
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
     cmd.AddValue("tleorbits", "TLE Orbits path", tleOrbitsPath);
     cmd.AddValue("satCount", "The amount of satellites", satelliteCount);
     cmd.AddValue("simTime", "Time in minutes the simulation will run for", simTime);
+    cmd.AddValue("updateInterval", "Time in seconds between intervals in the simulation", updateInterval);
+    cmd.AddValue("CCA",
+                 "Congestion Control Algorithm: TcpNewReno, TcpLinuxReno, "
+                 "TcpHybla, TcpHighSpeed, TcpHtcp, TcpVegas, TcpScalable, TcpVeno, "
+                 "TcpBic, TcpYeah, TcpIllinois, TcpWestwoodPlus, TcpLedbat, "
+                 "TcpLp, TcpDctcp, TcpCubic, TcpBbr",
+                 congestionCA);
 
     cmd.AddValue("BER", "Bit Error Rate", bitErrorRate);
-    cmd.AddValue("updateInterval", "Time in seconds between intervals in the simulation", updateInterval);
     cmd.AddValue("satSatDataRate", "DataRate from SAT-SAT", satSatDataRate);
     cmd.AddValue("gsSatDataRate", "DataRate from GS-SAT", gsSatDataRate);
     cmd.AddValue("linkAcqTime", "Link acquisition time", linkAcqTime);
     cmd.Parse(argc, argv);
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
+    
+    congestionCA = std::string("ns3::") + congestionCA;
     // ========================================================================
 
     // ============ Constellation handling and node Setup ============
@@ -166,7 +178,8 @@ int main(int argc, char* argv[]) {
     Ptr<Node> gsNode1 = LEOConstellation.groundStationNodes.Get(1);
 
     // How to specify a congestion control, first find its TypeID
-    TypeId tcpTid = TypeId::LookupByName("ns3::TcpCubic");
+    
+    TypeId tcpTid = TypeId::LookupByName(congestionCA);
     // Version 1 - Setting for every node
     Config::SetDefault("ns3::TcpL4Protocol::SocketType", TypeIdValue( tcpTid ));
     // Version 2 - Setting for individual nodes

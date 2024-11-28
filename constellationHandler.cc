@@ -342,7 +342,7 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
 
 // Function to be scheduled periodically in the ns3 simulator.
 void Constellation::updateConstellation() {
-    NS_LOG_INFO("\n[+] <" << Simulator::Now().GetSeconds() << "s> UPDATING CONSTELLATION");
+    NS_LOG_INFO("\n\x1b[32;1m[+]\x1b[37m <" << Simulator::Now().GetSeconds() << "s> UPDATING CONSTELLATION\x1b[0m");
 
     // Set the new positions of the satellites and update their position in NetAnimator.
     for (uint32_t n = 0; n < this->satelliteNodes.GetN(); ++n) {
