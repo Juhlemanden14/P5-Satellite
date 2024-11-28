@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("linkAcqTime", "Link acquisition time", linkAcqTime);
     cmd.Parse(argc, argv);
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
-    
+
     congestionCA = std::string("ns3::") + congestionCA;
     // ========================================================================
 
@@ -246,7 +246,6 @@ int main(int argc, char* argv[]) {
     // Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(20), routingStream);
     // Ipv4RoutingHelper::PrintRoutingTableEvery(Seconds(20), gsNode0, routingStream);
     // Ipv4RoutingHelper::PrintRoutingTableEvery(Seconds(14), gsNode0, routingStream);
-
 
 
     NS_LOG_UNCOND("");

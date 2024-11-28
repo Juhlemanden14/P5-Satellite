@@ -115,6 +115,9 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
     std::string formatted_TLE;
 
     Ptr<Node> dummyNode = CreateObject<Node>();
+    // Give it a constant mobility model to avoid warning in terminal
+    AnimationInterface::SetConstantPosition(dummyNode, 180, -90);
+
     // Loop through each satellite and set them up
     for (uint32_t n = 0; n < this->satelliteCount; ++n) {
         Ipv4AddressHelper tmpAddrHelper;
@@ -192,6 +195,9 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
     gsAddressHelper.SetBase("1.0.0.0", "255.255.255.0");
 
     Ptr<Node> dummyNode = CreateObject<Node>();
+    // Give it a constant mobility model to avoid warning in terminal
+    AnimationInterface::SetConstantPosition(dummyNode, -180, 90);
+
     // For each ground station, set up its mobility
     for (size_t n = 0; n < this->groundStationCount; ++n) {
         // Create the single netdevice on each ground station
@@ -328,6 +334,7 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
 
 
     this->initializeIntraLinks();
+    NS_LOG_INFO("[+] Initialized intra-plane links!");
     // Update constellation for time 0 (before the Simulation starts)
     this->updateConstellation();
 
@@ -550,7 +557,6 @@ void Constellation::establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<
     // Attach nodes to the same P2P channel.
     DynamicCast<PointToPointNetDevice>(node1->GetDevice(node1NetDeviceIndex))->Attach(channel);
     DynamicCast<PointToPointNetDevice>(node2->GetDevice(node2NetDeviceIndex))->Attach(channel);
-
 }
 
 
@@ -786,9 +792,21 @@ void Constellation::updateSatelliteLinks() {
                         double distance = satMobModel->GetDistanceFrom(connSatMobModel);
                         // NS_LOG_UNCOND("Coordinates of sat1 with new link: " << satMobModel->GetPosition());
                         NS_LOG_DEBUG("[+] Creating new sat link connection between sat [ " << Names::FindName(satNode) << " ].netDev[ " << satFreeNetDev << " ] and sat [ " << Names::FindName(connSatNode) << " ].netDev[ " << connSatFreeNetDev << " ]   COORDS: " << satMobModel->GetGeoPosition());
-                        this->establishLink(satNode, satFreeNetDev, connSatNode, connSatFreeNetDev, distance, SAT_SAT);
-                        connected = true;   // tell the 2 loop that the netdevice now has a connection
+                        
 
+                        // Avoid scheduled link acquisition time during first link establishment
+                        if (firstTimeLinkEstablishing) {
+                            this->establishLink(satNode, satFreeNetDev, connSatNode, connSatFreeNetDev, distance, SAT_SAT);
+                        } else {
+                            // Establish the new link, but take into account the link acquisition time.
+                            // This will schedule the link establish at --> Time.Now() + linkAcquisitionTime
+                            Simulator::Schedule(this->linkAcquisitionTime.Get(), [this, satNode, satFreeNetDev, connSatNode, connSatFreeNetDev, distance](){
+                                // NS_LOG_DEBUG("[!!!] <" << Simulator::Now().GetSeconds() << "s> Scheduled establish link!");
+                                this->establishLink(satNode, satFreeNetDev, connSatNode, connSatFreeNetDev, distance, SAT_SAT);
+                            });
+                        }
+
+                        connected = true;   // tell the 2 loop that the netdevice now has a connection
                         linksEstablished++;
 
                         // remove the now taken connNetDevice. We wait with removing the satNode's netDev, so that we dont get indexing errors
@@ -798,8 +816,6 @@ void Constellation::updateSatelliteLinks() {
                             }
                         }
                         break;  // after removing, break loop since 2 sats will never be able to connect more netDevices anyway (angles)
-
-
                     }
                 }
 
@@ -821,7 +837,9 @@ void Constellation::updateSatelliteLinks() {
         }
         netDevIndeciesToRemove.clear();
     }
-    
-    NS_LOG_INFO("Maintained " << linksMaintained << " links - Broke " << linksBroken << " links - Established " << linksEstablished << " links");
+    // Once we have done it the first time, disable it for the next time!
+    firstTimeLinkEstablishing = false;
 
+    NS_LOG_INFO("Maintained " << linksMaintained << " links - Broke " << linksBroken << " links - Established " << linksEstablished << " links");
+    
 }

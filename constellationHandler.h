@@ -144,7 +144,7 @@ class Constellation {
 
 
         
-
+        bool firstTimeLinkEstablishing = true;
 };
 
 
