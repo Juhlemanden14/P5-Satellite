@@ -309,7 +309,7 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
 
 // Function to be scheduled periodically in the ns3 simulator.
 void Constellation::updateConstellation() {
-    NS_LOG_DEBUG("\n\n[+] <" << Simulator::Now().GetSeconds() << "> UPDATING CONSTELLATION");
+    NS_LOG_INFO("\n[+] <" << Simulator::Now().GetSeconds() << "s> UPDATING CONSTELLATION");
 
     // Set the new positions of the satellites and update their position in NetAnimator.
     for (uint32_t n = 0; n < this->satelliteNodes.GetN(); ++n) {
@@ -367,13 +367,13 @@ void Constellation::updateGroundStationLinks() {
             Ptr<SatSGP4MobilityModel> satMobModel = this->satelliteMobilityModels[satMobModelIndex];
 
             if (this->gsIsLinkValid(gsMobModel, satMobModel)) {   // check if the link is still valid
-                NS_LOG_INFO("[+] Link maintained between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
+                NS_LOG_DEBUG("[+] Link maintained between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
                 linkFound = true;
                 continue;                                   // if still valid, continue to next GS
             }
             else {                                          // if no longer valid, break the link before making a new one
                 destroyLink(gs, 1, connectedSat, 5, GS_SAT);    // netDeviceIndex is always 1 for GS's, and 5 for sats
-                NS_LOG_INFO("[+] Link destroyed between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
+                NS_LOG_DEBUG("[+] Link destroyed between GS " << gsIndex << " and satellite index " << Names::FindName(connectedSat));
             }
         }
 
@@ -387,7 +387,7 @@ void Constellation::updateGroundStationLinks() {
                 double distance = gsMobModel->GetDistanceFrom(newSatMobModel);
                 // Establish a GS_SAT link. GS NetDevice is always 1, while SAT NetDevice is always 5
                 establishLink(gs, 1, newSat, 5, distance, GS_SAT);
-                NS_LOG_INFO("[+] Link established between GS " << gsIndex << " and satellite index " << Names::FindName(newSat));
+                NS_LOG_DEBUG("Link established between GS " << gsIndex << " and satellite index " << Names::FindName(newSat));
                 linkFound = true;
                 // Since valid link is established, move on to next GS
                 break;
@@ -788,6 +788,6 @@ void Constellation::updateSatelliteLinks() {
         netDevIndeciesToRemove.clear();
     }
     
-    NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << ": " << "Maintained " << linksMaintained << " links - Broke " << linksBroken << " links - Established " << linksEstablished << " links");
+    NS_LOG_INFO("Maintained " << linksMaintained << " links - Broke " << linksBroken << " links - Established " << linksEstablished << " links");
 
 }

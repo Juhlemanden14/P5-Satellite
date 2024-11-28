@@ -32,7 +32,7 @@ void SetupTracing(Ptr<Node> node) {
     ObjectMapValue socketList;
     node->GetObject<TcpL4Protocol>()->GetAttribute("SocketList", socketList);
 
-    NS_LOG_DEBUG("Node " << node->GetId() << " has " << socketList.GetN() << " sockets");
+    NS_LOG_DEBUG("[!] SetupTracing() for Node " << node->GetId() << " has " << socketList.GetN() << " socket(s)");
     // For each socket on the node, enable whatever tracing is relevant!
     for (size_t socketIndex = 0; socketIndex < socketList.GetN(); socketIndex++) {
 
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
     // Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
     
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
-    LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_ALL);
+    LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_INFO);
     
     Time::SetResolution(Time::NS);
 
