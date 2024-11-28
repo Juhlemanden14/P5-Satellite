@@ -97,8 +97,14 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
     NS_LOG_INFO("[+] Internet stack installed on satellites");
 
     PointToPointHelper p2pHelper;
+    
+    // Setup the error model
+    Ptr<RateErrorModel> error_model = CreateObject<RateErrorModel>();
+    error_model->SetUnit(RateErrorModel::ERROR_UNIT_PACKET);
+    error_model->SetRate(0.5);
+    p2pHelper.SetDeviceAttribute("ReceiveErrorModel", PointerValue(error_model));
+    
     std::string formatted_TLE;
-
 
     Ptr<Node> dummyNode = CreateObject<Node>();
     // Loop through each satellite and set them up

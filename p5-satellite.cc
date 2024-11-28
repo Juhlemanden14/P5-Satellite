@@ -71,7 +71,6 @@ void ReceiveWithSeqTsSize(Ptr<const Packet> pkt, const Address& from, const Addr
 
 
 
-
 int main(int argc, char* argv[]) {
     // This option will make packets be randomly routed between two equally costed paths
     // instead of always picking the same one. Is good for modelling load balancing!
@@ -86,11 +85,17 @@ int main(int argc, char* argv[]) {
     std::string tleDataPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt";
     std::string tleOrbitsPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt";
     uint32_t satelliteCount = 2;
-
+    double bitErrorRate = 1e-9;
+    int simTime = 10;
+    int updateInterval = 15;
+    
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
     cmd.AddValue("tleorbits", "TLE Orbits path", tleOrbitsPath);
     cmd.AddValue("satCount", "The amount of satellites", satelliteCount);
+    cmd.AddValue("BER", "Bit Error Rate", bitErrorRate);
+    cmd.AddValue("simTime", "Time in minutes the simulation will run for", simTime);
+    cmd.AddValue("updateInterval", "Time in seconds between intervals in the simulation", updateInterval);
     cmd.Parse(argc, argv);
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
     // ========================================================================
@@ -136,7 +141,7 @@ int main(int argc, char* argv[]) {
     Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, groundStationsCoordinates.size(), groundStationsCoordinates, StringValue("20Mbps"), StringValue("20Mbps"));
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(100, 15);
+    LEOConstellation.simulationLoop(simTime, updateInterval);
 
 
     // ============================== APPLICATIONS ==============================
@@ -166,9 +171,10 @@ int main(int argc, char* argv[]) {
     Ipv4Address targetIP = gsNode1->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress();
     OnOffHelper onoffHelper("ns3::TcpSocketFactory", InetSocketAddress(targetIP, port));
     onoffHelper.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
+    onoffHelper.SetAttribute("DataRate", StringValue("2kbps"));
     ApplicationContainer appSource = onoffHelper.Install(gsNode0);
     appSource.Start(Seconds(0));
-    appSource.Stop(Seconds(10));
+    appSource.Stop(Seconds(60*2));
 
 
     // ========================= TCP CWND TRACE TEST ========================
@@ -207,8 +213,10 @@ int main(int argc, char* argv[]) {
 
 
     // ============== Routing Tables Output ==============
-    Ptr<OutputStreamWrapper> routingStream =  Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
-    Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(2), routingStream);
+    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
+    // Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(20), routingStream);
+    // Ipv4RoutingHelper::PrintRoutingTableEvery(Seconds(20), gsNode0, routingStream);
+    // Ipv4RoutingHelper::PrintRoutingTableEvery(Seconds(14), gsNode0, routingStream);
 
 
 

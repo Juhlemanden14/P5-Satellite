@@ -7,6 +7,7 @@
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/netanim-module.h"
+#include "ns3/error-model.h"
 
 #include "tleHandler.h"
 #include "SRFMath.h"
@@ -24,13 +25,16 @@ class Constellation {
         std::vector<TLE> TLEVector;
         std::vector<Orbit> OrbitVector;
         
+        double gsSatPacketLoss;
+        double satSatPacketLoss;
+        
 
         uint32_t groundStationCount;
         NodeContainer groundStationNodes;
         
         std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
 
-        double maxGStoSatDistance = 5000.0; // km
+        double maxGStoSatDistance = 3000.0; // km
         double minGSElevation = 5.0;        // in degrees above the horizon
 
         double maxSatToSatDistance = 3000.0;
