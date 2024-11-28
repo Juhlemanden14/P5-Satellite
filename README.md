@@ -160,3 +160,16 @@ foreach(subdir ${scratch_subdirectories})
   endif()
 endforeach()
 ```
+
+
+### Critical! Updating GetRemote()
+Insert the following at `src/point-to-point/model/point-to-point-net-device.cc:622`
+```
+Address
+PointToPointNetDevice::GetRemote() const
+{
+    NS_LOG_FUNCTION(this);
+    return Address();
+    ...
+```
+
