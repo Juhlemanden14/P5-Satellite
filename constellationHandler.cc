@@ -651,6 +651,12 @@ bool Constellation::satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int 
 }
 
 void Constellation::updateSatelliteLinks() {
+
+    // keep track of amount of broken sat-sat links, maintained sat-sat links and established sat-sat links in each simulation round
+    int linksBroken = 0;
+    int linksMaintained = 0;
+    int linksEstablished = 0;
+
     NS_LOG_DEBUG("[+] updateSatelliteLinks() -----------");
     // Iterate over each satellite
     for (uint32_t i = 0; i < this->satelliteCount; i++) {
@@ -674,12 +680,15 @@ void Constellation::updateSatelliteLinks() {
                 
                 if (this->satIsLinkValid(satMobModel, netDevIndex, connSatMobModel, connNetDevIndex)) {
                     // NS_LOG_DEBUG("Link maintained satellites <" << Names::FindName(satNode) << "> - <" << Names::FindName(connSatNode) << ">");
+                    linksMaintained++;
                     continue;       // move on ot next netdevice for this satellite
                 }
                 else {
                     NS_LOG_DEBUG("Link BROKEN between satellites <" << Names::FindName(satNode) << "> - <" << Names::FindName(connSatNode) << ">");
                     destroyLink(satNode, netDevIndex, connSatNode, connNetDevIndex, SAT_SAT);
                     NS_LOG_DEBUG("used netDevs: " << netDevIndex << ", " << connNetDevIndex);
+
+                    linksBroken++;
 
                     // remove netDevices from availableNetDevs vector using satIndexes and the netdeviceIndex - 1
                     int satIndex = satNode->GetId();
@@ -705,14 +714,13 @@ void Constellation::updateSatelliteLinks() {
             }
         }
     }
- 
+    
 
     // keep track of which indecies to remove from the sat in the outermost loop. 
     // They canonly be removed AFTER checks for the sats netdevices are all done.
     std::vector<int> netDevIndeciesToRemove = {};
     // link establishment
     for (uint32_t satIndex = 0; satIndex < this->availableSatNetDevices.size(); ++satIndex) {   // lop through sats
-
 
         // get node and mobilityModel for this satellite
         Ptr<Node> satNode = this->satelliteNodes.Get(satIndex);
@@ -747,6 +755,8 @@ void Constellation::updateSatelliteLinks() {
                         this->establishLink(satNode, satFreeNetDev, connSatNode, connSatFreeNetDev, distance, SAT_SAT);
                         connected = true;   // tell the 2 loop that the netdevice now has a connection
 
+                        linksEstablished++;
+
                         // remove the now taken connNetDevice. We wait with removing the satNode's netDev, so that we dont get indexing errors
                         for (uint32_t i = 0; i < this->availableSatNetDevices[connSatIndex].size(); i++) {   // loop through to find the relevant index to remove at
                             if (this->availableSatNetDevices[connSatIndex][i] == (int)connSatFreeNetDev) {
@@ -769,91 +779,15 @@ void Constellation::updateSatelliteLinks() {
                 continue;       // continue to sat's next netdevice and try to find a link for that one
             }
         }
-
-        for (uint32_t i = 0; i < netDevIndeciesToRemove.size(); i++) {   // loop through to find the relevant index to remove at
-            this->availableSatNetDevices[satIndex].erase(this->availableSatNetDevices[satIndex].begin() + netDevIndeciesToRemove[i]);
+        // loop through to find the relevant index to remove at
+        for (uint32_t i = 0; i < netDevIndeciesToRemove.size(); i++) {
+            // -i is added as without it we will remove the wrong indicies as we change the vector's size during the for loop.
+            // This problem only arises if a satellite has multiple free netdevices and more than 1 of them gets a link in a single run of this function.
+            this->availableSatNetDevices[satIndex].erase(this->availableSatNetDevices[satIndex].begin() + netDevIndeciesToRemove[i] - i);
         }
         netDevIndeciesToRemove.clear();
     }
-    // TODO add pair stuff
-    // ALSO, add the pairs
+    
+    NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << ": " << "Maintained " << linksMaintained << " links - Broke " << linksBroken << " links - Established " << linksEstablished << " links");
+
 }
-
-
-
-
-
-
-/* ========================= PSEUDO-CODE for updateInterSatelliteLinks =========================
-
-void Constellation::updateSatelliteLinks() {
-
-    // LINK CHECKING AND PERHAPS BREAKING
-    for each satellite:                 // iterate over each sats 4 netdevices
-
-        get sat mobility model
-        get sat node
-
-        for each ISL netdevice:
-            if (has_existing_link(satNode, netDevIndex)) {      // rewrite GS_existing_link to be usable for sat-sat also
-                get connected satellite node                    // rewrite get_conn_sat to be usable for sat-sat also
-                get connected satellite netDev
-                get connected satellite mobility model          // same as GS-sat code
-                if (satIsLinkValid(currSatMobModel, currNetDev, connSatMobModel, connSatNetDev)) {     // see pseudocode for method below
-                    log maintained link
-                    continue                                    // if link still good, move on to next ISLL on sat
-                }
-                else {      // if link no longer good, break it
-                    log broken link
-                    destroyLink(satNode, netDevIndex)           // destroy the specific ISL
-                    add (satNode, satNetDev) and (connSatNode, connSatNetDev) to pair queue
-                }
-            }
-
-    // LINK ESTABLISHING
-    for each currSat,netDevIndex in pair queue:         // check possible connections between free netDevs
-        
-        get sat mobility model
-        get sat node
-        get sat netDevIndex
-
-        for each nextSat in pair queue excluding currSat:
-
-            get sat mobility model
-            get sat node
-            get sat netDevIndex
-
-            if (satIsLinkValid(currSatMobModel, currNetDev, nextSatMobModel, nextSatNetDev)) {     // see pseudocode for method below
-                establishLink()
-                break
-            }
-            else {      // if could not make link with nextSat, put it in the queue again
-                enqueue next pair again     // make sure that free (sat, netDevs)-pairs are put back in the queue
-            }
-}
-
-This can be made in a clever way with the following algorithm:
- - on initialization of the constellation:
-    - make intraplane connections between sats - only if valid links
-    - keep track of pairs containing node and netDevIndex (std::pair<Ptr<node>, uint32_t>)
-
- - during simulationLoop:
-    - loop1: Break impossible links - add newly available node/netDev pairs to same queue as before
-    - loop2: Go through queue and try to make connections between empty netDev's
-
-
-
-void Constellation::initializeIntraLinks() {
-    for plane in orbits:         // go through each orbital plane and try to establish valid links
-        for sat in plane:
-            get next sat in line. If at last index, get 0'th index as the next, completing the ring-loop
-            if (satIsLinkValid(currSatMobModel, 1, nextSatMobModel, 3)) {       // pseudocode for method below
-                connect sat netDev1 with next_sat netDev3 using establishLink()
-                continue        // go to next sat in the orbit
-            }
-            else {
-                add sat and netDev1 to pairs queue
-            }
-}
-
-*/

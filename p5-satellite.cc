@@ -86,6 +86,7 @@ int main(int argc, char* argv[]) {
     std::string tleDataPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt";
     std::string tleOrbitsPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt";
     uint32_t satelliteCount = 2;
+    bitErrorRate = 
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
@@ -111,18 +112,32 @@ int main(int argc, char* argv[]) {
 
     // Ocean (right top)
     groundStationsCoordinates.emplace_back(GeoCoordinate(40.5931930, 152.1042000, 71));
-    // ================================================================
+    // =============== World trade centers=================================================
 
+    // // World trade center, New York
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(40.711394051407254, -74.01147005959824, 20));
+
+    // // Trade Center, Los Angeles
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(33.768177717872234, -118.19913975532677, 20));
+
+    // // Trade center, Tokyo
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(35.654709301980525, 139.75638631219815, 20));
+
+    // // Trade center Europe, Belgium
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(51.213129420062295, 4.4227015398076786, 20));
+
+    // // Trade center, Dubai
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(25.217273781972715, 55.28287038973016, 20));
+
+    // // Trade center, Sao Paulo
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(-23.6089096493764, -46.697137303281885, 20));
 
 
     // ======================== Setup constellation ========================
     Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, groundStationsCoordinates.size(), groundStationsCoordinates, StringValue("20Mbps"), StringValue("20Mbps"));
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(0, 15);
-
-
-
+    LEOConstellation.simulationLoop(100, 15);
 
 
     // ============================== APPLICATIONS ==============================
