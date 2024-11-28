@@ -86,7 +86,6 @@ int main(int argc, char* argv[]) {
     std::string tleDataPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt";
     std::string tleOrbitsPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt";
     uint32_t satelliteCount = 2;
-    bitErrorRate = 
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
