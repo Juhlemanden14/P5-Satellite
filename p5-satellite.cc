@@ -85,21 +85,27 @@ int main(int argc, char* argv[]) {
     std::string tleDataPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt";
     std::string tleOrbitsPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt";
     uint32_t satelliteCount = 2;
-    double bitErrorRate = 1e-9;
+    double bitErrorRate = 10e-9;
+    std::string satSatDataRate("20Mbps");
+    std::string gsSatDataRate("20Mbps");
     int simTime = 10;
     int updateInterval = 15;
+    std::string linkAcqTime("2s");
     
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
     cmd.AddValue("tleorbits", "TLE Orbits path", tleOrbitsPath);
     cmd.AddValue("satCount", "The amount of satellites", satelliteCount);
-    cmd.AddValue("BER", "Bit Error Rate", bitErrorRate);
     cmd.AddValue("simTime", "Time in minutes the simulation will run for", simTime);
+
+    cmd.AddValue("BER", "Bit Error Rate", bitErrorRate);
     cmd.AddValue("updateInterval", "Time in seconds between intervals in the simulation", updateInterval);
+    cmd.AddValue("satSatDataRate", "DataRate from SAT-SAT", satSatDataRate);
+    cmd.AddValue("gsSatDataRate", "DataRate from GS-SAT", gsSatDataRate);
+    cmd.AddValue("linkAcqTime", "Link acquisition time", linkAcqTime);
     cmd.Parse(argc, argv);
     NS_LOG_INFO("[+] CommandLine arguments parsed succesfully");
     // ========================================================================
-    
 
     // ============ Constellation handling and node Setup ============
     // Ground station coordinates:
@@ -138,7 +144,17 @@ int main(int argc, char* argv[]) {
 
 
     // ======================== Setup constellation ========================
-    Constellation LEOConstellation(satelliteCount, tleDataPath, tleOrbitsPath, groundStationsCoordinates.size(), groundStationsCoordinates, StringValue("20Mbps"), StringValue("20Mbps"));
+    Constellation LEOConstellation(satelliteCount, 
+                                   tleDataPath, 
+                                   tleOrbitsPath, 
+                                   groundStationsCoordinates.size(), 
+                                   groundStationsCoordinates,
+                                   DataRate(gsSatDataRate),
+                                   DataRate(satSatDataRate),
+                                   bitErrorRate,
+                                   bitErrorRate,
+                                   Time(linkAcqTime)
+                                   );
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
     LEOConstellation.simulationLoop(simTime, updateInterval);
@@ -171,7 +187,7 @@ int main(int argc, char* argv[]) {
     Ipv4Address targetIP = gsNode1->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress();
     OnOffHelper onoffHelper("ns3::TcpSocketFactory", InetSocketAddress(targetIP, port));
     onoffHelper.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
-    onoffHelper.SetAttribute("DataRate", StringValue("2kbps"));
+    onoffHelper.SetAttribute("DataRate", StringValue("1Mbps"));
     ApplicationContainer appSource = onoffHelper.Install(gsNode0);
     appSource.Start(Seconds(0));
     appSource.Stop(Seconds(60*2));

@@ -13,19 +13,27 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("P5-Constellation-Handler");
 
 // Class constructor.
-Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates, StringValue gsInputDataRate, StringValue satInputDataRate) {
+Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates, DataRate gsInputDataRate, DataRate satInputDataRate, double gsSatErrorRate, double satSatErrorRate, TimeValue linkAcquisitionSec) {
 
     // Needed to avoid address collision. (Simulator issue, not real address collision)
     Ipv4AddressGenerator::TestMode();
-
-    Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("20Mbps"));
     
+    // TODO: Change this
+    // Config::SetDefault("ns3::PointToPointNetDevice::DataRate", DataRateValue(DataRate("100GB/s")));
+    // Config::SetDefault("ns3::PointToPointNetDevice::DataRate", DataRateValue(satInputDataRate));
+    
+
     this->satelliteCount = satCount;
     this->groundStationCount = gsCount;
 
     // Set the eSAT_SAT and GS_SAT DataRates
     this->gsToSatDataRate = gsInputDataRate;
     this->satToSatDataRate = satInputDataRate;
+    // BitErrorRates!
+    this->gsSatPacketLossRate = gsSatErrorRate;
+    this->satSatPacketLossRate = satSatErrorRate;
+    // Link acquisition time!
+    this->linkAcquisitionTime = linkAcquisitionSec;
     
     // Reserve memory for the vector.
     this->availableSatNetDevices.reserve(this->satelliteCount);
@@ -101,7 +109,7 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
     // Setup the error model
     Ptr<RateErrorModel> error_model = CreateObject<RateErrorModel>();
     error_model->SetUnit(RateErrorModel::ERROR_UNIT_PACKET);
-    error_model->SetRate(0.5);
+    error_model->SetRate(satSatPacketLossRate);
     p2pHelper.SetDeviceAttribute("ReceiveErrorModel", PointerValue(error_model));
     
     std::string formatted_TLE;
@@ -119,6 +127,7 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
             // Use .Install() to get both a PointToPointNetDevice and a Channel on a new NetDevice
             
             Ptr<NetDevice> device = p2pHelper.Install(NodeContainer(currentSat, dummyNode)).Get(0);
+            
 
             // This is to utilize the importance of the assign() function, while ensuring that they do not have an IP address afterwards
             // So we just assign an arbitrary address to each satellite, and then remove that address right after
@@ -132,6 +141,13 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
             Ptr<PointToPointNetDevice> currP2pNetDevice = DynamicCast<PointToPointNetDevice>(device);
             Ptr<PointToPointChannel> nullChannel = CreateObject<PointToPointChannel>();
             currP2pNetDevice->Attach(nullChannel);
+            
+            
+            // If NetDevice is connected to either GS or SAT, set the appropriate DataRate
+            if (i == 5)
+                currP2pNetDevice->SetDataRate(this->gsToSatDataRate);
+            else
+                currP2pNetDevice->SetDataRate(this->satToSatDataRate);
         }
 
         // Create and aggregate the Satellite SGP4 mobility model to each satellite
@@ -164,15 +180,23 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
     NS_LOG_INFO("[+] Internet stack installed on groundstations");
     
     PointToPointHelper p2pHelper;
+
+    // Setup the error model
+    Ptr<RateErrorModel> error_model = CreateObject<RateErrorModel>();
+    error_model->SetUnit(RateErrorModel::ERROR_UNIT_PACKET);
+    error_model->SetRate(gsSatPacketLossRate);
+    p2pHelper.SetDeviceAttribute("ReceiveErrorModel", PointerValue(error_model));
+
     // Groundstations have static IP addresses, therefore we simply assign them here and never remove the address from their interface
     Ipv4AddressHelper gsAddressHelper;
     gsAddressHelper.SetBase("1.0.0.0", "255.255.255.0");
 
     Ptr<Node> dummyNode = CreateObject<Node>();
-    // For each ground station, set up its mobi
+    // For each ground station, set up its mobility
     for (size_t n = 0; n < this->groundStationCount; ++n) {
         // Create the single netdevice on each ground station
         NetDeviceContainer gsNetDevice = p2pHelper.Install(NodeContainer(groundStations.Get(n), dummyNode) ).Get(0);
+        
 
         // Assign an ip to the ground station but turn the interface down!
         gsAddressHelper.Assign(gsNetDevice);
@@ -185,6 +209,8 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
         Ptr<PointToPointChannel> nullChannel = CreateObject<PointToPointChannel>();
         currP2PNetDevice->Attach(nullChannel);
         gsNetDevice.Get(0)->GetChannel()->Dispose();
+        // Set the DataRate!
+        currP2PNetDevice->SetDataRate(this->gsToSatDataRate);
 
         // GroundStation mobility even though they dont move. The mobility models allows use of methods like .GetDistanceFrom(GS) etc.
         Ptr<SatConstantPositionMobilityModel> GSMobility = CreateObject<SatConstantPositionMobilityModel>();
@@ -298,6 +324,7 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     // Ptr<Node> sat7 = Names::Find<Node>("STARLINK-30159");
     // this->establishLink(sat6, 2, sat7, 2, 3000000, SAT_SAT);
 
+    NS_LOG_UNCOND("Node 18 -> " << Names::FindName(this->satelliteNodes.Get(18)));
 
 
     this->initializeIntraLinks();
@@ -350,7 +377,7 @@ void Constellation::updateConstellation() {
     // This does not seem to be a problem, so we ONLY use RecomputeRoutingTables without calling PopulateRoutingTables first!
     NS_LOG_DEBUG("Computing tables");
     Ipv4GlobalRoutingHelper::RecomputeRoutingTables();
-    NS_LOG_DEBUG("DONE with tables");
+    NS_LOG_INFO("[+] Routing tables computed");
     // POPULATE All satellites ARP tables :). THIS IS ONLY VALID FOR CSMA LINKS, NOT FOR POINT TO POINT
     // NeighborCacheHelper neighborCacheHelper;
     // neighborCacheHelper.PopulateNeighborCache();
@@ -537,7 +564,7 @@ void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<No
 
     // Get neccessary pointers for the local node
     Ptr<NetDevice> netDev_1 = node1->GetDevice(node1NetDeviceIndex);
-    Ptr<Ipv4> ipv4_1 = node1->GetObject<Ipv4>();    
+    Ptr<Ipv4> ipv4_1 = node1->GetObject<Ipv4>();
     // Get necessary pointers for the foreign node 
     Ptr<NetDevice> netDev_2 = node2->GetDevice(node2NetDeviceIndex);
     Ptr<Ipv4> ipv4_2 = node2->GetObject<Ipv4>();
@@ -692,7 +719,8 @@ void Constellation::updateSatelliteLinks() {
                 else {
                     NS_LOG_DEBUG("Link BROKEN between satellites <" << Names::FindName(satNode) << "> - <" << Names::FindName(connSatNode) << ">");
                     destroyLink(satNode, netDevIndex, connSatNode, connNetDevIndex, SAT_SAT);
-                    NS_LOG_DEBUG("used netDevs: " << netDevIndex << ", " << connNetDevIndex);
+                    NS_LOG_DEBUG("  used netDevs: " << netDevIndex << ", " << connNetDevIndex);
+                    NS_LOG_DEBUG("  First satellite " << satNode->GetId() << " second satellite " << connSatNode->GetId());
 
                     linksBroken++;
 

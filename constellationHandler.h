@@ -25,10 +25,11 @@ class Constellation {
         std::vector<TLE> TLEVector;
         std::vector<Orbit> OrbitVector;
         
-        double gsSatPacketLoss;
-        double satSatPacketLoss;
-        
+        double gsSatPacketLossRate = 0.0;
+        double satSatPacketLossRate = 0.0;
 
+        TimeValue linkAcquisitionTime = Seconds(0);
+        
         uint32_t groundStationCount;
         NodeContainer groundStationNodes;
         
@@ -43,7 +44,16 @@ class Constellation {
         Ipv4AddressHelper satAddressHelper;
 
         // Constructor declaration
-        Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates, StringValue gsInputDataRate, StringValue satInputDataRate);
+        Constellation(uint32_t satCount, 
+                      std::string tleDataPath, 
+                      std::string orbitsDataPath, 
+                      uint32_t gsCount, 
+                      std::vector<GeoCoordinate> groundStationsCoordinates, 
+                      DataRate gsInputDataRate, 
+                      DataRate satInputDataRate, 
+                      double gsSatErrorRate, 
+                      double satSatErrorRate, 
+                      TimeValue linkAcquisitionSec);
 
         // Returns node container with all satellites, passes satelliteMobiliyModels.
         NodeContainer createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string tleOrbitsPath);
@@ -74,8 +84,8 @@ class Constellation {
         };
 
         // Data rates:
-        StringValue satToSatDataRate;
-        StringValue gsToSatDataRate;
+        DataRate satToSatDataRate;
+        DataRate gsToSatDataRate;
 
         // The available net devices of the satellites.
         std::vector< std::vector<int> > availableSatNetDevices;
