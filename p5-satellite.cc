@@ -6,72 +6,16 @@
 #include "ns3/netanim-module.h"
 // #include "ns3/satellite-module.h"
 // #include "ns3/csma-module.h" // Important when DynamicCasting
+#include "ns3/socket.h"
 
-
+// P5 Self-written files
 #include "tleHandler.h"
 #include "constellationHandler.h"
+#include "traceHandler.h"
 
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("P5-Satellite");
-// Correct Net Animator folder path from P5-Satellite: './../../netanim-3.109/NetAnim'
-// Call in directory: 
-// $ cd ns-3.42
-
-// ============= CongestionWindow Trace methods =============
-static void CwndTraceSink(Ptr<OutputStreamWrapper> logStream, uint32_t nodeID, size_t socketIndex, uint32_t oldval, uint32_t newval) {
-    // uint32_t roundedTime = std::round(Simulator::Now().GetSeconds()*10)/10;
-    // NS_LOG_DEBUG("[" << roundedTime << "s] Node:" << nodeID << " Socket:" << socketIndex << " | CWND:" << oldval << " --> " << newval);
-    *logStream->GetStream() << Simulator::Now().GetSeconds() << "," << newval << std::endl;
-}
-
-// A supreme method for enabling varius Tracings, logging everything into log files!
-void SetupTracing(Ptr<Node> node) {
-
-    // Get the list of sockets on the specified node
-    ObjectMapValue socketList;
-    node->GetObject<TcpL4Protocol>()->GetAttribute("SocketList", socketList);
-
-    NS_LOG_DEBUG("[!] SetupTracing() for Node " << node->GetId() << " has " << socketList.GetN() << " socket(s)");
-    // For each socket on the node, enable whatever tracing is relevant!
-    for (size_t socketIndex = 0; socketIndex < socketList.GetN(); socketIndex++) {
-
-        Ptr<TcpSocketBase> socketBase = DynamicCast<TcpSocketBase>(socketList.Get(socketIndex));
-
-        // --- CONGESTION WINDOW ---
-        std::string logName = "scratch/P5-Satellite/out/CongestionWindow_Node" + std::to_string(node->GetId()) + "_Socket" + std::to_string(socketIndex) + ".txt";
-        // C++ can not make use of an ofstream through a bound callback, as noted by the CreateFileStream() method. Therefore we make use of the ns3 AsciiTraceHelper to pass around a stream which the callback methods can write to!
-        AsciiTraceHelper asciiTraceHelper;
-        Ptr<OutputStreamWrapper> logStream = asciiTraceHelper.CreateFileStream(logName);
-        // Row 1 should be the names of the columns
-        *logStream->GetStream() << "time(s),CongestionWindow" << std::endl;
-        // At time 0 the CWND=0, which is missing unless we just add it here
-        *logStream->GetStream() << "0,0" << std::endl;
-
-        
-        // Trace a source to the congestion window, but do so with a Make*Bound*Callback!
-        // This allows us to pass in additional method parameters beyond the one that CongestionWindow supports!
-        // Genius for logging!
-        socketBase->TraceConnectWithoutContext("CongestionWindow", MakeBoundCallback(&CwndTraceSink, logStream, node->GetId(), socketIndex));
-        // TODO, PLOT THIS ALSO
-        // socketBase->TraceConnectWithoutContext("RTT")
-
-        // ======== ADDITIONAL SHIT IF NEEDED LATER ========
-        // Setting socket MinRTO
-        // socketBase->SetMinRto(Time(Seconds(2)));
-
-        // Setting socket Congestion control algorithm AND Recovery type?!
-        // socketBase->SetCongestionControlAlgorithm();
-        // socketBase->SetRecoveryAlgorithm();
-    }
-}
-
-// Test function for utilizing SeqHeaders (see where it is called)
-void ReceiveWithSeqTsSize(Ptr<const Packet> pkt, const Address& from, const Address& dst, const SeqTsSizeHeader& header) {
-    NS_LOG_DEBUG("Sink received SetTsSize pkt -> " << header);
-}
-
-
 
 int main(int argc, char* argv[]) {
     // This option will make packets be randomly routed between two equally costed paths
@@ -80,6 +24,8 @@ int main(int argc, char* argv[]) {
     
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
     LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_INFO);
+    LogComponentEnable("P5TraceHandler", LOG_LEVEL_DEBUG);
+
     
     Time::SetResolution(Time::NS);
 
@@ -203,7 +149,7 @@ int main(int argc, char* argv[]) {
     onoffHelper.SetAttribute("DataRate", StringValue("1Mbps"));
     ApplicationContainer appSource = onoffHelper.Install(gsNode0);
     appSource.Start(Seconds(0));
-    appSource.Stop(Seconds(60*2));
+    appSource.Stop(Seconds(60));
 
 
     // ========================= TCP CWND TRACE TEST ========================
@@ -211,11 +157,20 @@ int main(int argc, char* argv[]) {
     Simulator::Schedule(MilliSeconds(1), &SetupTracing, gsNode0);
     Simulator::Schedule(MilliSeconds(1), &SetupTracing, gsNode1);
     // ======================================================================
-    
+
+
+    // @Marcus TODO: Use this somehow for the graphs
+    // Simulator::Schedule(Time("3s"), [gsNode0, gsNode1]() {
+    //     printCompleteRoute(gsNode0, gsNode1);
+    // });
    
 
 
     // ========================================= Setup of NetAnimator mobility =========================================
+    // Correct Net Animator folder path from P5-Satellite: './../../netanim-3.109/NetAnim'
+    // Call in directory: 
+    // $ cd ns-3.42
+
     // Give each ground station a constant position model, and set the location from the satellite mobility model!
     for (uint32_t n = 0; n < LEOConstellation.groundStationNodes.GetN(); n++) {
         GeoCoordinate gsNpos = LEOConstellation.groundStationsMobilityModels[n]->GetGeoPosition();
@@ -243,7 +198,7 @@ int main(int argc, char* argv[]) {
 
     // ============== Routing Tables Output ==============
     // IS VERY BUGGY, might hang the application, or generate gigabytes of files on your computer or something
-    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
+    // Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
     // Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(20), routingStream);
     // Ipv4RoutingHelper::PrintRoutingTableEvery(Seconds(20), gsNode0, routingStream);
     // Ipv4RoutingHelper::PrintRoutingTableEvery(Seconds(14), gsNode0, routingStream);
