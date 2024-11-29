@@ -123,15 +123,13 @@ int main(int argc, char* argv[]) {
     Ptr<Node> gsNode0 = LEOConstellation.groundStationNodes.Get(0);
     Ptr<Node> gsNode1 = LEOConstellation.groundStationNodes.Get(1);
 
-    // How to specify a congestion control, first find its TypeID
-    
+    // Specifying the Congestion Control Algorithm is done by finding its TypeID
     TypeId tcpTid = TypeId::LookupByName(congestionCA);
     // Version 1 - Setting for every node
     Config::SetDefault("ns3::TcpL4Protocol::SocketType", TypeIdValue( tcpTid ));
     // Version 2 - Setting for individual nodes
     gsNode0->GetObject<TcpL4Protocol>()->SetAttribute("SocketType", TypeIdValue(tcpTid));
     gsNode1->GetObject<TcpL4Protocol>()->SetAttribute("SocketType", TypeIdValue(tcpTid));
-
 
     uint16_t port = 7777;
     // Create a packetSink application receiving the traffic in GS 1
