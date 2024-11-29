@@ -6,7 +6,7 @@
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/netanim-module.h"
-#include "ns3/csma-module.h"
+// #include "ns3/csma-module.h"
 
 using namespace ns3;
 

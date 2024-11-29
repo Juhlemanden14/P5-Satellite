@@ -5,7 +5,7 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/netanim-module.h"
 // #include "ns3/satellite-module.h"
-#include "ns3/csma-module.h"
+// #include "ns3/csma-module.h" // Important when DynamicCasting
 
 
 #include "tleHandler.h"
@@ -242,6 +242,7 @@ int main(int argc, char* argv[]) {
 
 
     // ============== Routing Tables Output ==============
+    // IS VERY BUGGY, might hang the application, or generate gigabytes of files on your computer or something
     Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>("scratch/P5-Satellite/out/sat.routes", std::ios::out);
     // Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(20), routingStream);
     // Ipv4RoutingHelper::PrintRoutingTableEvery(Seconds(20), gsNode0, routingStream);
