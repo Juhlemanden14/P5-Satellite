@@ -3,20 +3,23 @@
 
 #include "ns3/satellite-module.h"
 
-void TrimTrailingSpaces(std::string &str);
+void TrimTrailingSpaces(std::string& str);
 
-struct TLE {
+struct TLE
+{
     std::string name;
     std::string line1;
     std::string line2;
 };
-std::vector<TLE> ReadTLEFile(const std::string &filename, std::string &TLEAge);
 
+std::vector<TLE> ReadTLEFile(const std::string& filename, std::string& TLEAge);
 
-struct Orbit {
+struct Orbit
+{
     std::string name;
     std::vector<std::string> satellites;
 };
-std::vector<Orbit> ReadOrbitFile(const std::string &filename);
+
+std::vector<Orbit> ReadOrbitFile(const std::string& filename);
 
 #endif

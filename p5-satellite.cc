@@ -1,16 +1,16 @@
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
+#include "ns3/netanim-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
-#include "ns3/netanim-module.h"
 // #include "ns3/satellite-module.h"
 // #include "ns3/csma-module.h" // Important when DynamicCasting
 #include "ns3/socket.h"
 
 // P5 Self-written files
-#include "tleHandler.h"
 #include "constellationHandler.h"
+#include "tleHandler.h"
 #include "traceHandler.h"
 
 using namespace ns3;
@@ -21,12 +21,11 @@ int main(int argc, char* argv[]) {
     // This option will make packets be randomly routed between two equally costed paths
     // instead of always picking the same one. Is good for modelling load balancing!
     // Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
-    
+
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
     LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_INFO);
     LogComponentEnable("P5TraceHandler", LOG_LEVEL_DEBUG);
 
-    
     Time::SetResolution(Time::NS);
 
     // ========================================= Setup default commandline parameters  =========================================
@@ -35,13 +34,13 @@ int main(int argc, char* argv[]) {
     uint32_t satelliteCount = 2;
     int simTime = 10;
     int updateInterval = 15;
-    
+
     double bitErrorRate = 10e-9;
     std::string satSatDataRate("20Mbps");
     std::string gsSatDataRate("20Mbps");
     std::string linkAcqTime("2s");
     std::string congestionCA = "TcpNewReno";
-    
+
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
     cmd.AddValue("tleorbits", "TLE Orbits path", tleOrbitsPath);
@@ -68,7 +67,7 @@ int main(int argc, char* argv[]) {
     // ============ Constellation handling and node Setup ============
     // Ground station coordinates:
     std::vector<GeoCoordinate> groundStationsCoordinates;
-    
+
     // Hartebeesthoek, South Africa
     // groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
 
@@ -111,8 +110,7 @@ int main(int argc, char* argv[]) {
                                    DataRate(satSatDataRate),
                                    bitErrorRate,
                                    bitErrorRate,
-                                   Time(linkAcqTime)
-                                   );
+                                   Time(linkAcqTime));
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
     LEOConstellation.simulationLoop(simTime, updateInterval);
@@ -172,7 +170,9 @@ int main(int argc, char* argv[]) {
     // Give each ground station a constant position model, and set the location from the satellite mobility model!
     for (uint32_t n = 0; n < LEOConstellation.groundStationNodes.GetN(); n++) {
         GeoCoordinate gsNpos = LEOConstellation.groundStationsMobilityModels[n]->GetGeoPosition();
-        AnimationInterface::SetConstantPosition(LEOConstellation.groundStationNodes.Get(n), gsNpos.GetLongitude(), -gsNpos.GetLatitude());
+        AnimationInterface::SetConstantPosition(LEOConstellation.groundStationNodes.Get(n),
+                                                gsNpos.GetLongitude(),
+                                                -gsNpos.GetLatitude());
     }
     // Run NetAnim from the ns3-find (ns3 root)
     AnimationInterface anim("scratch/P5-Satellite/out/p5-satellite.xml");
@@ -208,5 +208,3 @@ int main(int argc, char* argv[]) {
     Simulator::Destroy();
     return 0;
 }
-
-

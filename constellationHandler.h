@@ -3,19 +3,19 @@
 
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
+#include "ns3/error-model.h"
 #include "ns3/internet-module.h"
+#include "ns3/netanim-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
-#include "ns3/netanim-module.h"
-#include "ns3/error-model.h"
 
 #include "tleHandler.h"
 #include "SRFMath.h"
 
 using namespace ns3;
 
-
-class Constellation {
+class Constellation
+{
     public:
         // Attributes
         uint32_t satelliteCount;
@@ -24,15 +24,15 @@ class Constellation {
         std::vector<Ptr<SatSGP4MobilityModel>> satelliteMobilityModels;
         std::vector<TLE> TLEVector;
         std::vector<Orbit> OrbitVector;
-        
+
         double gsSatPacketLossRate = 0.0;
         double satSatPacketLossRate = 0.0;
 
         TimeValue linkAcquisitionTime = Seconds(0);
-        
+
         uint32_t groundStationCount;
         NodeContainer groundStationNodes;
-        
+
         std::vector<Ptr<SatConstantPositionMobilityModel>> groundStationsMobilityModels;
 
         double maxGStoSatDistance = 3000.0; // km
@@ -44,15 +44,15 @@ class Constellation {
         Ipv4AddressHelper satAddressHelper;
 
         // Constructor declaration
-        Constellation(uint32_t satCount, 
-                      std::string tleDataPath, 
-                      std::string orbitsDataPath, 
-                      uint32_t gsCount, 
-                      std::vector<GeoCoordinate> groundStationsCoordinates, 
-                      DataRate gsInputDataRate, 
-                      DataRate satInputDataRate, 
-                      double gsSatErrorRate, 
-                      double satSatErrorRate, 
+        Constellation(uint32_t satCount,
+                      std::string tleDataPath,
+                      std::string orbitsDataPath,
+                      uint32_t gsCount,
+                      std::vector<GeoCoordinate> groundStationsCoordinates,
+                      DataRate gsInputDataRate,
+                      DataRate satInputDataRate,
+                      double gsSatErrorRate,
+                      double satSatErrorRate,
                       TimeValue linkAcquisitionSec);
 
         // Returns node container with all satellites, passes satelliteMobiliyModels.
@@ -66,12 +66,14 @@ class Constellation {
         void updateConstellation();
 
     private:
-        typedef enum LinkType {
+        typedef enum LinkType
+        {
             GS_SAT = 0,
             SAT_SAT
         } LinkType;
 
-        typedef struct AngleRange {
+        typedef struct AngleRange
+        {
             double minAngle;
             double maxAngle;
         } AngleRange;
@@ -88,10 +90,10 @@ class Constellation {
         DataRate gsToSatDataRate;
 
         // The available net devices of the satellites.
-        std::vector< std::vector<int> > availableSatNetDevices;
+        std::vector<std::vector<int>> availableSatNetDevices;
 
         // Queue for providing ipv4 addresses for inter satellite links.
-        std::queue< std::pair<Ipv4Address, Ipv4Address> > linkAddressProvider;
+        std::queue<std::pair<Ipv4Address, Ipv4Address>> linkAddressProvider;
         int linkSubnetCounter = 0;
 
         // Method for getting an address subnet pair for an inter satellite link.
@@ -100,18 +102,28 @@ class Constellation {
         // Method for reclaiming a previously used address.
         void releaseLinkAddressPair(Ipv4Address linkAddress_0, Ipv4Address linkAddress_1);
 
-        // Creates a channel between 2 nodes' specified netDevices with calculated delay based on distance and the datarate set to 'dataRate'.
-        // If used on a GS-sat link, GSnode should always be before satNode in parameters
-        // If link type is gs-sat, satellite is assigned an IP on the same subnet as the GS's already existing IP address
-        // If link type is sat-sat, they are both assigned an arbitrary IP address
-        void establishLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, double distanceM, LinkType linkType);
+        // Creates a channel between 2 nodes' specified netDevices with calculated delay based on
+        // distance and the datarate set to 'dataRate'. If used on a GS-sat link, GSnode should always
+        // be before satNode in parameters If link type is gs-sat, satellite is assigned an IP on the
+        // same subnet as the GS's already existing IP address If link type is sat-sat, they are both
+        // assigned an arbitrary IP address
+        void establishLink(Ptr<Node> node1,
+                          int node1NetDeviceIndex,
+                          Ptr<Node> node2,
+                          int node2NetDeviceIndex,
+                          double distanceM,
+                          LinkType linkType);
 
         // Destroy the link between node1 and node2's netdevices (specified by index).
         // Makes sure to make all connected netdevices point to the NullChannel, avoiding dangling pointers
         // If used on a GS-sat link, GSnode should always be before satNode in parameters
         // If link type is gs-sat, satellite is assigned an IP on the same subnet as the GS's already existing IP address
         // If link type is sat-sat, they are both assigned an arbitrary IP address
-        void destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<Node> node2, int node2NetDeviceIndex, LinkType linkType);
+        void destroyLink(Ptr<Node> node1,
+                        int node1NetDeviceIndex,
+                        Ptr<Node> node2,
+                        int node2NetDeviceIndex,
+                        LinkType linkType);
 
         /**
         Get the connected satellites node.
@@ -119,15 +131,18 @@ class Constellation {
         Ptr<NetDevice> getConnectedNetDev(Ptr<Node> GSNode, int netDevIndex);
 
         /**
-        Check if there is a channel connected to the nodes netdevice with index netDevIndex, which has 2 connected netdevices. This means a link exists.
-        return true/false based on if the link exists
+        Check if there is a channel connected to the nodes netdevice with index netDevIndex, which has 2
+        connected netdevices. This means a link exists. return true/false based on if the link exists
         */
         bool hasExistingLink(Ptr<Node> GSNode, int netDevIndex);
 
         // ==================== Satellite specific functions ===================
         void updateSatelliteLinks();
 
-        bool satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int netDeviceIndex, Ptr<SatSGP4MobilityModel> connMobilityModel, int connNetDeviceIndex);
+        bool satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel,
+                            int netDeviceIndex,
+                            Ptr<SatSGP4MobilityModel> connMobilityModel,
+                            int connNetDeviceIndex);
 
         void initializeIntraLinks();
 
@@ -135,17 +150,13 @@ class Constellation {
         void updateGroundStationLinks();
 
         /**
-        return a bool telling us whether the link is allowed to exist or not. This is based on GS elevation angle and distance between sat and GS
+        return a bool telling us whether the link is allowed to exist or not. This is based on GS
+        elevation angle and distance between sat and GS
         */
         bool gsIsLinkValid(Ptr<SatConstantPositionMobilityModel> GSMobModel, Ptr<SatSGP4MobilityModel>satMobModel);
 
 
-
-
-
-        
         bool firstTimeLinkEstablishing = true;
 };
-
 
 #endif

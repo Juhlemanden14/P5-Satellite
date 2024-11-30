@@ -1,7 +1,7 @@
 #include "tleHandler.h"
+
 #include <fstream>
 #include <sstream>
-
 
 // Function to trim trailing spaces, carriage returns, and newline characters
 void TrimTrailingSpaces(std::string &str) {
@@ -28,7 +28,8 @@ std::vector<TLE> ReadTLEFile(const std::string &filename, std::string &TLEAge) {
             TrimTrailingSpaces(tleEntry.line1);
             TrimTrailingSpaces(tleEntry.line2);
 
-            tleData.push_back(tleEntry);    // push to the back of the vecter containing the TLE entries from the file
+            tleData.push_back(tleEntry); // push to the back of the vecter containing the TLE
+                                         // entries from the file
         }
     }
     return tleData;
@@ -42,7 +43,7 @@ std::vector<Orbit> ReadOrbitFile(const std::string &filename) {
 
     while (std::getline(file, line)) {
         Orbit orbitEntry;
-        TrimTrailingSpaces(line);  // Trim whitespace from the orbit name
+        TrimTrailingSpaces(line); // Trim whitespace from the orbit name
         orbitEntry.name = line;
 
         if (std::getline(file, line)) {
@@ -57,7 +58,7 @@ std::vector<Orbit> ReadOrbitFile(const std::string &filename) {
             }
         }
 
-        orbitData.push_back(orbitEntry);  // Add orbit entry to the list
+        orbitData.push_back(orbitEntry); // Add orbit entry to the list
     }
 
     return orbitData;
