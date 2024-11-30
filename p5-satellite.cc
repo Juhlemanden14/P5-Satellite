@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
                                    Time(linkAcqTime));
 
     // Run simulationphase for x minutes with y second intervals. Includes an initial update at time 0.
-    LEOConstellation.simulationLoop(simTime, updateInterval);
+    LEOConstellation.scheduleSimulation(simTime, updateInterval);
 
 
     // ============================== APPLICATIONS ==============================

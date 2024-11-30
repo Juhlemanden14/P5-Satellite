@@ -12,7 +12,6 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("P5-Constellation-Handler");
 
-// Class constructor.
 Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates, DataRate gsInputDataRate, DataRate satInputDataRate, double gsSatErrorRate, double satSatErrorRate, TimeValue linkAcquisitionSec) {
 
     // Needed to avoid address collision. (Simulator issue, not real address collision)
@@ -52,11 +51,8 @@ Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::st
 
     // Create the ground stations in the constellation.
     this->groundStationNodes = this->createGroundStations(groundStationsCoordinates);
-
-    // Set satellite address helper, which is used to assign them Ipv4Addresses
-    this->satAddressHelper.SetBase(Ipv4Address("2.0.0.0"), Ipv4Mask("255.255.255.0"));
-
 }
+
 
 NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDataPath, std::string orbitsDataPath) {
     // Read orbit data
@@ -173,7 +169,6 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
     return satellites;
 }
 
-
 NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> groundStationsCoordinates) {
     
     NodeContainer groundStations(this->groundStationCount);
@@ -230,7 +225,7 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
 }
 
 
-void Constellation::initializeIntraLinks() {
+void Constellation::initializeSatIntraLinks() {
     // A counter used to keep track of the satellites ID
     uint32_t counter = 0;
     
@@ -312,12 +307,11 @@ void Constellation::initializeIntraLinks() {
     //         }
 }
 
-
 // --------------------------------------------------------
 
 
 
-void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) {
+void Constellation::scheduleSimulation(int totalMinutes, int updateIntervalSeconds) {
     // Run simulation phase at i intervals
     int loops = int(60*totalMinutes / updateIntervalSeconds);
     NS_LOG_DEBUG("[+] Simulation scheduled to loop " << loops << " times");
@@ -333,7 +327,7 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     NS_LOG_UNCOND("Node 18 -> " << Names::FindName(this->satelliteNodes.Get(18)));
 
 
-    this->initializeIntraLinks();
+    this->initializeSatIntraLinks();
     NS_LOG_INFO("[+] Initialized intra-plane links!");
     // Update constellation for time 0 (before the Simulation starts)
     this->updateConstellation();
@@ -347,7 +341,6 @@ void Constellation::simulationLoop(int totalMinutes, int updateIntervalSeconds) 
     }
 }
 
-// Function to be scheduled periodically in the ns3 simulator.
 void Constellation::updateConstellation() {
     NS_LOG_INFO("\n\x1b[32;1m[+]\x1b[37m <" << Simulator::Now().GetSeconds() << "s> UPDATING CONSTELLATION\x1b[0m");
 
@@ -474,6 +467,10 @@ bool Constellation::gsIsLinkValid(Ptr<SatConstantPositionMobilityModel> GSMobMod
         return false;
     }
 }
+
+
+
+
 
 bool Constellation::hasExistingLink(Ptr<Node> node, int netDevIndex) {
     if (node->GetDevice(netDevIndex)->GetChannel()->GetNDevices() == 2) {
@@ -612,12 +609,14 @@ std::pair<Ipv4Address, Ipv4Address> Constellation::getLinkAddressPair() {
         uint8_t addr[4] = {0, 0, 0, 1};
         address.Serialize(addr);
 
-        // Set the new address
+        // Set the new address, starting at 2.0.0.1
+        // Similiar to SetBase(Ipv4Address("2.0.0.0"), Ipv4Mask("255.255.255.0"));
         addr[0] = 2+floor(this->linkSubnetCounter/(256*256));
         addr[1] = floor(this->linkSubnetCounter/256);
         addr[2] = 1+this->linkSubnetCounter;
 
         // Increment the subnet counter so we do not reuse a subnet.
+        // TODO, should this also the the case with addr[3] and addr[4]???
         if (addr[2] == 253) {   // Skip the .254 and .255 subnets as they are broadcast addresses
             this->linkSubnetCounter += 3; 
         } else {
@@ -688,6 +687,8 @@ bool Constellation::satIsLinkValid(Ptr<SatSGP4MobilityModel> mobilityModel, int 
     // if both checks passed, the link is valid
     return true;
 }
+
+
 
 void Constellation::updateSatelliteLinks() {
 
@@ -841,5 +842,4 @@ void Constellation::updateSatelliteLinks() {
     firstTimeLinkEstablishing = false;
 
     NS_LOG_INFO("Maintained " << linksMaintained << " links - Broke " << linksBroken << " links - Established " << linksEstablished << " links");
-    
 }
