@@ -60,6 +60,9 @@ if __name__ == "__main__":
     # ==================== Fetch, split and plot interesting points ====================
     tleDataPath =   "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt"
     outputPath =    "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt"
+    
+    # Whether to make 2D or 3D plots(which include Mean Anomaly)
+    dimensions = '2d' # 2d or 3d
 
 
     with open(tleDataPath, 'r') as file:
@@ -95,12 +98,27 @@ if __name__ == "__main__":
 
 
     fig = plt.figure(figsize=(22, 14))
-    ax1 = fig.add_subplot(221, projection='3d')
-    ax1.scatter(RAAN, MeanAnomaly, Inclinations)
+    plt.rcParams.update({
+        'font.size': 18,          # General font size
+        'axes.labelsize': 18,     # Font size for axis labels
+        'xtick.labelsize': 18,    # Font size for x-axis tick labels
+        'ytick.labelsize': 18,    # Font size for y-axis tick labels
+        'axes.titlesize': 20      # Font size for plot titles
+    })
+    plt.subplots_adjust(wspace=0.3, hspace=0.3)
+
+    if dimensions == '2d':    
+        ax1 = fig.add_subplot(221)
+        ax1.scatter(RAAN, Inclinations)
+        ax1.set_ylabel("Inclination of orbit (degrees)")
+    elif dimensions == '3d':
+        ax1 = fig.add_subplot(221, projection='3d')
+        ax1.scatter(RAAN, MeanAnomaly, Inclinations)
+        ax1.set_ylabel("MeanAnomaly (degrees)")
+        ax1.set_zlabel("Inclination of orbit (degrees)")
+
     ax1.set_xlabel("RAAN (degrees)")
-    ax1.set_ylabel("MeanAnomaly (degrees)")
-    ax1.set_zlabel("Inclination of orbit (degrees)")
-    ax1.set_title("Scatterplot of satellites in the starlink constellation\nbased on RAAN and Orbit Inclination")
+    ax1.set_title("All satellites")
     # ==================================================================================
 
 
@@ -113,12 +131,18 @@ if __name__ == "__main__":
     polarMask = (98 >= Inclinations) & (Inclinations >= 80) & (25 >= RAAN)
     tracker = np.arange(0, satCount)[polarMask]
     polarNames = [names[i] for i in tracker]
-    ax2 = fig.add_subplot(222, projection='3d')
-    ax2.scatter(RAAN[polarMask], MeanAnomaly[polarMask], Inclinations[polarMask])
+    if dimensions == '2d':
+        ax2 = fig.add_subplot(222)
+        ax2.scatter(RAAN[polarMask], Inclinations[polarMask])
+        ax2.set_ylabel("Inclination of orbit (degrees)")
+    elif dimensions == '3d':
+        ax2 = fig.add_subplot(222, projection='3d')
+        ax2.scatter(RAAN[polarMask], MeanAnomaly[polarMask], Inclinations[polarMask])
+        ax2.set_ylabel("MeanAnomaly (degrees)")
+        ax2.set_zlabel("Inclination of orbit (degrees)")
+
     ax2.set_xlabel("RAAN (degrees)")
-    ax2.set_ylabel("MeanAnomaly (degrees)")
-    ax2.set_zlabel("Inclination of orbit (degrees)")
-    ax2.set_title("Polar orbits at 93 degrees")
+    ax2.set_title("Polar orbits at 93 Inclination")
     print("Polar names", polarNames[:3])
 
 
@@ -133,19 +157,26 @@ if __name__ == "__main__":
     maskRosette43_X.append(maskRosette43 & (310 >= RAAN) & (RAAN >= 300))
     tracker = np.arange(0, satCount)[maskRosette43]
     
-    ax3 = fig.add_subplot(223, projection='3d')
+    if dimensions == '2d':
+        ax3 = fig.add_subplot(223)
+        ax3.set_ylabel("Inclination of orbit (degrees)")
+    elif dimensions == '3d':
+        ax3 = fig.add_subplot(223, projection='3d')
+        ax3.set_ylabel("MeanAnomaly (degrees)")
+        ax3.set_zlabel("Inclination of orbit (degrees)")
+    ax3.set_xlabel("RAAN (degrees)")
+    ax3.set_title("Rosette orbits at 43 Inclination")
+        
     namesRosette43_X = []
     for m in maskRosette43_X:
-        ax3.scatter(RAAN[m], MeanAnomaly[m], Inclinations[m])
-        
+        if dimensions == '2d':
+            ax3.scatter(RAAN[m], Inclinations[m])
+        elif dimensions == '3d':
+            ax3.scatter(RAAN[m], MeanAnomaly[m], Inclinations[m])
         tracker = np.arange(0, satCount)[m]
         namesRosette43_X.append([names[i] for i in tracker])
 
     print("Satellite count", [len(orbit) for orbit in namesRosette43_X])
-    ax3.set_xlabel("RAAN (degrees)")
-    ax3.set_ylabel("MeanAnomaly (degrees)")
-    ax3.set_zlabel("Inclination of orbit (degrees)")
-    ax3.set_title("Rosette orbits at 43 degrees")
 
 
 
@@ -160,18 +191,27 @@ if __name__ == "__main__":
     maskRosette53_X.append(maskRosette53 & (325 >= RAAN) & (RAAN >= 315))
 
     tracker = np.arange(0, satCount)[maskRosette53]
-    ax4 = fig.add_subplot(224, projection='3d')
+
+    if dimensions == '2d':
+        ax4 = fig.add_subplot(224)
+        ax4.set_ylabel("Inclination of orbit (degrees)")
+    elif dimensions == '3d':
+        ax4 = fig.add_subplot(224, projection='3d')
+        ax4.set_ylabel("MeanAnomaly (degrees)")
+        ax4.set_zlabel("Inclination of orbit (degrees)")
+    ax4.set_xlabel("RAAN (degrees)")
+    ax4.set_title("Rosette orbits at 53 Inclination")
 
     namesRosette53_X = []
     for m in maskRosette53_X:
-        ax4.scatter(RAAN[m], MeanAnomaly[m], Inclinations[m])
+        if dimensions == '2d':
+            ax4.scatter(RAAN[m], Inclinations[m])
+        elif dimensions == '3d':
+            ax4.scatter(RAAN[m], MeanAnomaly[m], Inclinations[m])
 
         tracker = np.arange(0, satCount)[m]
-        namesRosette53_X.append([names[i] for i in tracker])    
-    ax4.set_xlabel("RAAN (degrees)")
-    ax4.set_ylabel("MeanAnomaly (degrees)")
-    ax4.set_zlabel("Inclination of orbit (degrees)")
-    ax4.set_title("Rosette orbits at 53 degrees")
+        namesRosette53_X.append([names[i] for i in tracker])
+    
     print("Satellite count", [len(orbit) for orbit in namesRosette53_X])
 
 
