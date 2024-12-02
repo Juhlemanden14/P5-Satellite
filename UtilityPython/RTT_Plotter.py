@@ -6,7 +6,7 @@ directory = 'scratch/P5-Satellite/out'
 
 # Iterate over each file in the directory
 for filename in os.listdir(directory):
-    if filename.startswith("CongestionWindow"):
+    if filename.startswith("RTT"):
         filepath = os.path.join(directory, filename)
         
         # Read the data from the file
@@ -14,20 +14,22 @@ for filename in os.listdir(directory):
             lines = file.readlines()
         
         # Extract the data
-        time = []
-        congestion_window = []
+        timestamp = []
+        rtt_list = []
+        
         for line in lines[1:]:  # Skip the header line
-            t, cwnd = map(float, line.strip().split(','))
-            time.append(t)
-            congestion_window.append(cwnd)
+            t, rtt = map(float, line.strip().split(','))
+            timestamp.append(t)
+            # Convert ns to ms
+            rtt_list.append(rtt/1_000_000)
         
         # Plotting the data
-        plt.plot(time, congestion_window, marker='o')
+        plt.plot(timestamp, rtt_list, marker='o')
 
         # Adding title and labels
-        plt.title(f'Congestion Window Over Time ({filename})')
+        plt.title(f'RTT ({filename})')
         plt.xlabel('Time (s)')
-        plt.ylabel('Congestion Window')
+        plt.ylabel('Round Trip Time (ms)')
 
         # Display the plot
         plt.grid(True)

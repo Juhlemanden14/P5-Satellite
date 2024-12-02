@@ -17,7 +17,7 @@ void CwndTraceSink(Ptr<OutputStreamWrapper> logStream, uint32_t oldval, uint32_t
 }
 
 void RTTTrace(Ptr<OutputStreamWrapper> logStream, Time oldRtt, Time newRtt) {
-    *logStream->GetStream() << Simulator::Now().GetSeconds() << "," << newRtt << std::endl;
+    *logStream->GetStream() << Simulator::Now().GetSeconds() << "," << newRtt.GetDouble() << std::endl;
 }
 
 void SetupTracing(Ptr<Node> node) {
