@@ -16,6 +16,10 @@ void CwndTraceSink(Ptr<OutputStreamWrapper> logStream, uint32_t oldval, uint32_t
     *logStream->GetStream() << Simulator::Now().GetSeconds() << "," << newval << std::endl;
 }
 
+void RTTTrace(Ptr<OutputStreamWrapper> logStream, Time oldRtt, Time newRtt) {
+    *logStream->GetStream() << Simulator::Now().GetSeconds() << "," << newRtt << std::endl;
+}
+
 void SetupTracing(Ptr<Node> node) {
     // Get the list of sockets on the specified node
     ObjectMapValue socketList;
@@ -28,26 +32,35 @@ void SetupTracing(Ptr<Node> node) {
         Ptr<TcpSocketBase> socketBase = DynamicCast<TcpSocketBase>(socketList.Get(socketIndex));
 
         // --- CONGESTION WINDOW ---
-        std::string logName = "scratch/P5-Satellite/out/CongestionWindow_Node" +
+        std::string CWNDLogName = "scratch/P5-Satellite/out/CongestionWindow_Node" +
                               std::to_string(node->GetId()) + "_Socket" +
                               std::to_string(socketIndex) + ".txt";
+
+        std::string RTTLogName = "scratch/P5-Satellite/out/RTT_data_node" +
+                              std::to_string(node->GetId()) + "_socket" +
+                              std::to_string(socketIndex) + ".txt";
+
         // C++ can not make use of an ofstream through a bound callback, as noted by the
         // CreateFileStream() method. Therefore we make use of the ns3 AsciiTraceHelper to pass
         // around a stream which the callback methods can write to!
         AsciiTraceHelper asciiTraceHelper;
-        Ptr<OutputStreamWrapper> logStream = asciiTraceHelper.CreateFileStream(logName);
+        Ptr<OutputStreamWrapper> CWNDLogStream = asciiTraceHelper.CreateFileStream(CWNDLogName);
         // Row 1 should be the names of the columns
-        *logStream->GetStream() << "time(s),CongestionWindow" << std::endl;
+        *CWNDLogStream->GetStream() << "time(s),CongestionWindow" << std::endl;
         // At time 0 the CWND=0, which is missing unless we just add it here
-        *logStream->GetStream() << "0,0" << std::endl;
+        *CWNDLogStream->GetStream() << "0,0" << std::endl;
 
         // Trace a source to the congestion window, but do so with a Make*Bound*Callback!
         // This allows us to pass in additional method parameters beyond the one that
         // CongestionWindow supports! Brilliant for logging!
-        socketBase->TraceConnectWithoutContext("CongestionWindow",
-                                               MakeBoundCallback(&CwndTraceSink, logStream));
-        // TODO, PLOT THIS ALSO
-        // socketBase->TraceConnectWithoutContext("RTT")
+        socketBase->TraceConnectWithoutContext("CongestionWindow", MakeBoundCallback(&CwndTraceSink, CWNDLogStream));
+
+        // Trace RTT:
+        AsciiTraceHelper RTTTraceHelper;
+        Ptr<OutputStreamWrapper> RTTLogStream = RTTTraceHelper.CreateFileStream(RTTLogName);
+        socketBase->TraceConnectWithoutContext("RTT", MakeBoundCallback(&RTTTrace, RTTLogStream));
+
+        *RTTLogStream->GetStream() << "Packet,RTT" << std::endl;
 
         // ======== ADDITIONAL SHIT IF NEEDED LATER ========
         // Setting socket MinRTO
