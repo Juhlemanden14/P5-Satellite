@@ -4,6 +4,20 @@ import matplotlib.pyplot as plt
 # Define the directory containing the .txt files
 directory = 'scratch/P5-Satellite/out'
 
+# save link break timestamps
+link_break_ts = []
+
+# filepath for link breaks
+for filename in os.listdir(directory):
+    if filename.startswith("link_break_times_satCount"):
+        link_breaks_fp = os.path.join(directory, filename)
+
+        with open(link_breaks_fp, 'r') as linkbreaks_file:
+            lines = linkbreaks_file.readlines()
+            for line in lines:
+                link_break_ts.append(float(line.strip(",\n")))
+
+
 # Iterate over each file in the directory
 for filename in os.listdir(directory):
     if filename.startswith("RTT"):
@@ -25,6 +39,10 @@ for filename in os.listdir(directory):
         
         # Plotting the data
         plt.plot(timestamp, rtt_list, marker='o')
+
+        # plot link breaks
+        for ts in link_break_ts:
+            plt.axvline(x=ts, color='r', label=f"linkbreak ({ts} s)")
 
         # Adding title and labels
         plt.title(f'RTT ({filename})')

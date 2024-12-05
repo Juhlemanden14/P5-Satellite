@@ -70,6 +70,26 @@ class Constellation
         double minGSElevation = 5.0;        // in degrees above the horizon
 
 
+        // =============================================== Route break handling ===============================================
+        /**
+         * Vector for keeping track of the current route as a vector of [satNode, netDev] pairs. 
+         * Check the route before link breaks occur. When breaking links afterwards, check if a the break affects the route.
+         * If so, save to a file at which time the break occured. This can then be used for plotting red lines where breaks occur, giving a stronger basis for conclusions
+         * based on graphs
+         * 
+         * This procedure requires the following changes:
+         *  - update destroyLink()
+         *  - add saveCompleteRoute()
+         *  - save link breaks to txt-file for plotting.
+         */
+        std::vector<std::pair<Ptr<Node>, int>> currRoute;
+
+        /**
+         * Save the current route to the 'currRoute' vector
+         */
+        void saveCompleteRoute(Ptr<Node> srcNode, Ptr<Node> dstNode);
+
+
         // ==================== Initial setup ===================
         /**
          * Returns node container with all satellites

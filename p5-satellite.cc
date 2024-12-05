@@ -72,17 +72,17 @@ int main(int argc, char* argv[]) {
     // groundStationsCoordinates.emplace_back(GeoCoordinate(-25.8872, 27.7077, 1540));
 
     // Atlantic Ocean (left mid)
-    groundStationsCoordinates.emplace_back(GeoCoordinate(8.965719363937712, -31.654778506938765, 50));
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(8.965719363937712, -31.654778506938765, 50));
 
     // Tea Gardens, New South Wales Australia
     // groundStationsCoordinates.emplace_back(GeoCoordinate(-32.5931930, 152.1042000, 71));
 
     // Ocean (right top)
-    groundStationsCoordinates.emplace_back(GeoCoordinate(40.5931930, 152.1042000, 71));
+    // groundStationsCoordinates.emplace_back(GeoCoordinate(40.5931930, 152.1042000, 71));
     // =============== World trade centers=================================================
 
     // // World trade center, New York
-    // groundStationsCoordinates.emplace_back(GeoCoordinate(40.711394051407254, -74.01147005959824, 20));
+    groundStationsCoordinates.emplace_back(GeoCoordinate(40.711394051407254, -74.01147005959824, 20));
 
     // // Trade Center, Los Angeles
     // groundStationsCoordinates.emplace_back(GeoCoordinate(33.768177717872234, -118.19913975532677, 20));
@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
     // groundStationsCoordinates.emplace_back(GeoCoordinate(51.213129420062295, 4.4227015398076786, 20));
 
     // // Trade center, Dubai
-    // groundStationsCoordinates.emplace_back(GeoCoordinate(25.217273781972715, 55.28287038973016, 20));
+    groundStationsCoordinates.emplace_back(GeoCoordinate(25.217273781972715, 55.28287038973016, 20));
 
     // // Trade center, Sao Paulo
     // groundStationsCoordinates.emplace_back(GeoCoordinate(-23.6089096493764, -46.697137303281885, 20));
@@ -145,7 +145,7 @@ int main(int argc, char* argv[]) {
     onoffHelper.SetAttribute("DataRate", StringValue("1Mbps"));
     ApplicationContainer appSource = onoffHelper.Install(gsNode0);
     appSource.Start(Seconds(0));
-    appSource.Stop(Seconds(60));
+    appSource.Stop(Seconds(simTime * 60));
 
 
     // ========================= TCP CWND TRACE TEST ========================
@@ -188,8 +188,8 @@ int main(int argc, char* argv[]) {
         anim.UpdateNodeColor(LEOConstellation.groundStationNodes.Get(n), 0, 255, 255);
         anim.UpdateNodeSize(LEOConstellation.groundStationNodes.Get(n), 4, 4);
     }
-    anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(0), "Hartebeesthoek");
-    anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(1), "Tea Gardens");
+    anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(0), "World trade center");
+    anim.UpdateNodeDescription(LEOConstellation.groundStationNodes.Get(1), "Trade center");
     // ==================================================================================================================
 
 

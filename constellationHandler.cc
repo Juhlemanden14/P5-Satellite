@@ -217,6 +217,8 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
         Ptr<SatConstantPositionMobilityModel> GSMobility = CreateObject<SatConstantPositionMobilityModel>();
         GSMobility->SetGeoPosition(groundStationsCoordinates[n]);
         this->groundStationsMobilityModels.emplace_back(GSMobility);
+
+        Names::Add("Groundstation " + std::to_string(n), groundStations.Get(n));
     }
     NS_LOG_DEBUG("[+] SatConstantPositionMobilityModel installed on " << groundStations.GetN() << " ground stations");
     p2pHelper.EnablePcap("scratch/P5-Satellite/out/ground-station", groundStations, true);
@@ -336,7 +338,14 @@ void Constellation::scheduleSimulation(int totalMinutes, int updateIntervalSecon
     for (int i = 1; i < loops; ++i) {
         Time t = Seconds(i * updateIntervalSeconds);
         Simulator::Schedule(t, [this]() {
+
+            // TODO: save the current route before breaking any links.
+            this->saveCompleteRoute(this->groundStationNodes.Get(0), this->groundStationNodes.Get(1));
+            
             this->updateConstellation();
+
+            // TODO: clear current route before next time
+            this->currRoute.clear();
         });
     }
 }
@@ -487,8 +496,9 @@ Ptr<NetDevice> Constellation::getConnectedNetDev(Ptr<Node> GSNode, int netDevInd
         // Grab one of the NetDevices on the Channel
         Ptr<NetDevice> foreignNetDevice = localNetDevice->GetChannel()->GetDevice(n);
         // If that NetDevice is NOT your own, it must be the other node
-        if (localNetDevice != foreignNetDevice)
+        if (localNetDevice != foreignNetDevice) {
             return foreignNetDevice;
+        }
     }
     return localNetDevice;  // never gets here, but this line makes the compiler happy
 }
@@ -565,6 +575,39 @@ void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<No
         return;
     }
 
+    // check if the route has been broken
+    bool broken = false;
+    std::pair<Ptr<Node>, int> node1Pair = {node1, node1NetDeviceIndex};
+    std::pair<Ptr<Node>, int> node2Pair = {node2, node2NetDeviceIndex};
+    for (const auto& pair : this->currRoute) {
+        if ( (pair.first == node1Pair.first && pair.second == node1Pair.second) || (pair.first == node2Pair.first && pair.second == node2Pair.second) ) {
+            broken = true;
+            NS_LOG_INFO("ROUTE BROKEN BETWEEN NODES " << Names::FindName(node1) << " - " << Names::FindName(node2) << "");
+            break;
+        }
+    }
+
+    // save break to file
+    if (broken) {
+        // Get the current simulator time in seconds
+        double currentTime = Simulator::Now().GetSeconds();
+
+        // Construct the file name using the satCount
+        std::ostringstream fileName;
+        fileName << "scratch/P5-Satellite/out/link_break_times_satCount" << this->satelliteCount << ".log";
+
+        // Open the file in append mode
+        std::ofstream outFile(fileName.str(), std::ios::app);
+        if (outFile.is_open()) {
+            // Write the current time to the file
+            outFile << currentTime << "," << std::endl;
+            outFile.close();
+        } else {
+            NS_LOG_ERROR("Failed to open file: " << fileName.str());
+        }
+    }
+
+
     // Get neccessary pointers for the local node
     Ptr<NetDevice> netDev_1 = node1->GetDevice(node1NetDeviceIndex);
     Ptr<Ipv4> ipv4_1 = node1->GetObject<Ipv4>();
@@ -593,6 +636,7 @@ void Constellation::destroyLink(Ptr<Node> node1, int node1NetDeviceIndex, Ptr<No
         ipv4_1->RemoveAddress(node1NetDeviceIndex, 0);  // TODO: yet again, we assume that netdevice Indexes are same as IPv4 indexes
         ipv4_2->RemoveAddress(node2NetDeviceIndex, 0);  // TODO: yet again, we assume that
     }
+
     return;
 }
 
@@ -842,4 +886,59 @@ void Constellation::updateSatelliteLinks() {
     firstTimeLinkEstablishing = false;
 
     NS_LOG_INFO("Maintained " << linksMaintained << " links - Broke " << linksBroken << " links - Established " << linksEstablished << " links");
+}
+
+
+
+
+
+void Constellation::saveCompleteRoute(Ptr<Node> srcNode, Ptr<Node> dstNode){
+    NS_LOG_INFO("[!] Route testing (from node " << srcNode->GetId() << " to node " << dstNode->GetId() << ")");
+
+    Ipv4Header header;
+    header.SetDestination( dstNode->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress() );
+    header.SetSource( srcNode->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress() );
+    header.SetProtocol( TcpL4Protocol::PROT_NUMBER );
+    Socket::SocketErrno errnoOut = Socket::ERROR_NOTERROR;
+
+
+    // Start at the source node and get the next hop node based on the routing table
+    // The next hop is the gateway, which is found by continously using the IP of the destination node
+    // When gateway is found, this becomes the new source node. Repeat until at destination
+    Ptr<Node> currentNode = srcNode;
+    while (true) {
+        Ptr<Ipv4Route> route = currentNode->GetObject<Ipv4>()->GetRoutingProtocol()->RouteOutput(nullptr, header, 0, errnoOut);
+        int32_t interfaceOut = currentNode->GetObject<Ipv4>()->GetInterfaceForDevice( route->GetOutputDevice() );
+
+        Ptr<NetDevice> localNetDevice = currentNode->GetDevice(interfaceOut);
+        Ptr<NetDevice> foreignNetDevice = getConnectedNetDev(currentNode, interfaceOut);
+        // for (int n = 0; n < 2; n++) {
+        //     Ptr<NetDevice> tmpDevice = localNetDevice->GetChannel()->GetDevice(n);
+        //     if (localNetDevice != tmpDevice)
+        //         foreignNetDevice = tmpDevice;
+        // }
+        Ptr<Node> foreignNode = foreignNetDevice->GetNode();
+        NS_LOG_INFO("Forwarding from " << Names::FindName(currentNode) << "(" << interfaceOut << ") --> " << Names::FindName(foreignNode) << "(" << foreignNode->GetObject<Ipv4>()->GetInterfaceForDevice(foreignNetDevice) << ") at " << route->GetGateway());
+        
+        // save states here to the vector
+        std::pair<Ptr<Node>, int> currPair = {currentNode, interfaceOut};
+        std::pair<Ptr<Node>, int> nextPair = {foreignNode, foreignNode->GetObject<Ipv4>()->GetInterfaceForDevice(foreignNetDevice)};
+        this->currRoute.emplace_back(currPair);
+        this->currRoute.emplace_back(nextPair);
+
+        if (foreignNode == dstNode)
+            break;
+
+        currentNode = foreignNode;
+    }
+
+    // // print route vector here
+    // NS_LOG_INFO("Printing contents of currRoute:");
+    // for (const auto& pair : this->currRoute) {
+    //     Ptr<Node> node = pair.first;
+    //     int netDevice = pair.second;
+    //     NS_LOG_INFO("Node name: " << Names::FindName(node) << " - NetDevice: " << netDevice);
+    // }
+
+
 }
