@@ -14,7 +14,7 @@ NS_LOG_COMPONENT_DEFINE("P5-Constellation-Handler");
 
 Constellation::Constellation(uint32_t satCount, std::string tleDataPath, std::string orbitsDataPath, uint32_t gsCount, std::vector<GeoCoordinate> groundStationsCoordinates, DataRate gsInputDataRate, DataRate satInputDataRate, double gsSatErrorRate, double satSatErrorRate, TimeValue linkAcquisitionSec) {
 
-    // Needed to avoid address collision. (Simulator issue, not real address collision)
+    // In the simulation, this Ipv4AddressGenerator keeps track of all allocated IPv4 addresses. If we want to remove an address and later allocate it to another Ipv4Interface, this generates an error! Therefore we enable "TestMode", which means it *does not* check if an new addresses have previously been allocated. Basicallly, enabling TestMode mimics the real world the most, as no one can keep a global record on which IP addresses have been assigned previously in history
     Ipv4AddressGenerator::TestMode();
     
     // TODO: Change this
