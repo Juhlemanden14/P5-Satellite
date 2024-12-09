@@ -1,3 +1,7 @@
+# Ignore all types of output files
 *.xml
 *.pcap
 *.routes
+
+# extra
+out/

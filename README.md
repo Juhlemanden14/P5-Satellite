@@ -1,5 +1,30 @@
 # P5-Satellite
 
+### Alterring the source code!
+In the file 'point-to-point-net-device' in the NS-3 source code, alter the following function:
+```cpp
+Address
+PointToPointNetDevice::GetRemote() const
+{
+    NS_LOG_FUNCTION(this);
+    // NS_ASSERT(m_channel->GetNDevices() == 2);            // comment back in for vanilla version
+    return Address();                                       // comment out for vanilla version
+    for (std::size_t i = 0; i < m_channel->GetNDevices(); ++i)
+    {
+        Ptr<NetDevice> tmp = m_channel->GetDevice(i);
+        if (tmp != this)
+        {
+            return tmp->GetAddress();
+        }
+    }
+    NS_ASSERT(false);
+    // quiet compiler.
+    return Address();
+}
+```
+This function, when left unchanged, will make our simulator crash if a packet is on a channel that gets removed. This fix simple stops the check from
+completing.
+
 ### NetAnim
 ONLY run NetAnim from the ns-3.42 root folder! `ns3-find && netanim`
 
@@ -160,3 +185,16 @@ foreach(subdir ${scratch_subdirectories})
   endif()
 endforeach()
 ```
+
+
+### Critical! Updating GetRemote()
+Insert the following at `src/point-to-point/model/point-to-point-net-device.cc:622`
+```
+Address
+PointToPointNetDevice::GetRemote() const
+{
+    NS_LOG_FUNCTION(this);
+    return Address();
+    ...
+```
+

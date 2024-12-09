@@ -1,9 +1,9 @@
-# include "SRFMath.h"
-
-#include <cmath>
+#include "SRFMath.h"
 
 #include "ns3/core-module.h"
 #include "ns3/satellite-module.h"
+
+#include <cmath>
 
 using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("P5-SRFMath");
@@ -14,7 +14,7 @@ Vector normalizeVector(Vector vec) {
     double x_norm = vec.x / vec_mag;    // devide every component by the magnitude
     double y_norm = vec.y / vec_mag;
     double z_norm = vec.z / vec_mag;
-    Vector vec_norm = Vector(x_norm, y_norm, z_norm);   // assemble the new vector 
+    Vector vec_norm = Vector(x_norm, y_norm, z_norm); // assemble the new vector
     return vec_norm;
 }
 
@@ -23,7 +23,7 @@ Vector vectorCrossProduct(Vector vec0, Vector vec1) {
     double cross_x = vec0.y * vec1.z - vec0.z * vec1.y;
     double cross_y = vec0.z * vec1.x - vec0.x * vec1.z;
     double cross_z = vec0.x * vec1.y - vec0.y * vec1.x;
-    return Vector(cross_x, cross_y, cross_z);   // Return the resulting vector
+    return Vector(cross_x, cross_y, cross_z); // Return the resulting vector
 }
 
 Vector projectOntoPlane(Vector fromVec, Vector normVecZ){
@@ -54,8 +54,8 @@ std::pair<double, double> getAngleFromSatPair(Ptr<SatSGP4MobilityModel>sat0, Ptr
 
 
     // Compute the relative vectors
-    Vector sat0_to_sat1 = sat1_r - sat0_r;      // vector pointing from sat0 to sat1
-    Vector sat1_to_sat0 = sat0_r - sat1_r;      // opposite of above vector
+    Vector sat0_to_sat1 = sat1_r - sat0_r; // vector pointing from sat0 to sat1
+    Vector sat1_to_sat0 = sat0_r - sat1_r; // opposite of above vector
     NS_LOG_DEBUG("[LH] sat0_to_sat1: " << sat0_to_sat1);
     NS_LOG_DEBUG("[LH] sat1_to_sat0: " << sat1_to_sat0);
 
@@ -72,13 +72,13 @@ std::pair<double, double> getAngleFromSatPair(Ptr<SatSGP4MobilityModel>sat0, Ptr
     Vector SRF0_y = normalizeVector(sat0_y);
     Vector SRF0_z = normalizeVector(sat0_r);
     NS_LOG_DEBUG("[LH] SRF0_x: " << SRF0_x);
-    NS_LOG_DEBUG("[LH] SRF0_y: " << SRF0_y);  
-    NS_LOG_DEBUG("[LH] SRF0_z: " << SRF0_z);  
+    NS_LOG_DEBUG("[LH] SRF0_y: " << SRF0_y);
+    NS_LOG_DEBUG("[LH] SRF0_z: " << SRF0_z);
     Vector SRF1_x = normalizeVector(sat1_v);
     Vector SRF1_y = normalizeVector(sat1_y);
     Vector SRF1_z = normalizeVector(sat1_r);
     NS_LOG_DEBUG("[LH] SRF1_x: " << SRF1_x);
-    NS_LOG_DEBUG("[LH] SRF1_y: " << SRF1_y);  
+    NS_LOG_DEBUG("[LH] SRF1_y: " << SRF1_y);
     NS_LOG_DEBUG("[LH] SRF1_z: " << SRF1_z);
 
 

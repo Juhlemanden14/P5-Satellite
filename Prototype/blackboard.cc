@@ -53,7 +53,6 @@ void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
         
         ObjectMapValue m_sockets;
         n.Get(i)->GetObject<TcpL4Protocol>()->GetAttribute("SocketList", m_sockets);
-        
 
         if (m_sockets.GetN() >= 1) {
             NS_LOG_UNCOND("     Socket count: " << m_sockets.GetN());
@@ -66,12 +65,10 @@ void TraceCwnd(NodeContainer n, uint32_t nodeId, uint32_t socketId) {
             NS_LOG_UNCOND(socket->GetMinRto() << " | " << socket->GetSocketType());
         }
 
-
         // std::pair<const uint64_t, ns3::Ptr<ns3::TcpSocketBase>> &socketItem
         // for (auto& socketItem : m_sockets) {
         //     NS_LOG_UNCOND("Hej");
         // }
-
         
         // for (ObjectPtrContainerValue::Iterator it = m_sockets.Begin(); it != m_sockets.End(); ++it) {
         // }
