@@ -35,9 +35,9 @@ int main(int argc, char* argv[]) {
     int simTime = 10;
     int updateInterval = 15;
 
-    double bitErrorRate = 10e-9;
-    std::string satSatDataRate("20Mbps");
-    std::string gsSatDataRate("20Mbps");
+    double bitErrorRate = 10e-7;
+    std::string satSatDataRate("100Mbps");
+    std::string gsSatDataRate("100Mbps");
     std::string linkAcqTime("2s");
     std::string congestionCA = "TcpNewReno";
 
