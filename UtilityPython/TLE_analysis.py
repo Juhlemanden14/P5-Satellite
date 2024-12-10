@@ -58,8 +58,10 @@ def extract_satellites_by_inclination_range(tleDataPath, polar_limit=90, rosette
 
 if __name__ == "__main__":
     # ==================== Fetch, split and plot interesting points ====================
-    tleDataPath =   "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt"
-    outputPath =    "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt"
+    # tleDataPath =   "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt"
+    # outputPath =    "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt"
+    tleDataPath =   "resources/starlink_13-11-2024_tle_data.txt"
+    outputPath =    "resources/starlink_13-11-2024_orbits.txt"
     
     # Whether to make 2D or 3D plots(which include Mean Anomaly)
     dimensions = '2d' # 2d or 3d
@@ -141,8 +143,9 @@ if __name__ == "__main__":
         ax2.set_ylabel("MeanAnomaly (degrees)")
         ax2.set_zlabel("Inclination of orbit (degrees)")
 
+    ax2.set_ylim(97.65, 97.665)
     ax2.set_xlabel("RAAN (degrees)")
-    ax2.set_title("Polar orbits at 93 Inclination")
+    ax2.set_title("Polar orbits at ~97.65 degrees Inclination")
     print("Polar names", polarNames[:3])
 
 
@@ -164,6 +167,8 @@ if __name__ == "__main__":
         ax3 = fig.add_subplot(223, projection='3d')
         ax3.set_ylabel("MeanAnomaly (degrees)")
         ax3.set_zlabel("Inclination of orbit (degrees)")
+    
+    ax3.set_ylim(42.985, 43.01)
     ax3.set_xlabel("RAAN (degrees)")
     ax3.set_title("Rosette orbits at 43 Inclination")
         
@@ -298,7 +303,7 @@ if __name__ == "__main__":
     plt.show()
 
     # =============================================================================================
-    # extract_satellites_by_inclination_range(tleDataPath, polar_limit=90, rosette_ranges=((52.5, 53.5), (42.5, 43.5)), polar_count=200, rosette_count=150)
+    extract_satellites_by_inclination_range(tleDataPath, polar_limit=90, rosette_ranges=((52.5, 53.5), (42.5, 43.5)), polar_count=200, rosette_count=150)
 
 
 
