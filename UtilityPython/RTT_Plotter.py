@@ -45,9 +45,12 @@ for filename in os.listdir(directory):
             plt.axvline(x=ts, color='r', label=f"linkbreak ({ts} s)")
 
         # Adding title and labels
-        plt.title(f'RTT ({filename})')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Round Trip Time (ms)')
+        plt.title(f'RTT ({filename})', fontsize=36)
+        plt.xlabel('Time (s)', fontsize=30)
+        plt.ylabel('Round Trip Time (ms)', fontsize=30)
+
+        # Adjusting axis numbers font size
+        plt.tick_params(axis='both', which='major', labelsize=26)
 
         # Display the plot
         plt.grid(True)
