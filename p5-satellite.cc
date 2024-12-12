@@ -21,6 +21,7 @@ int main(int argc, char* argv[]) {
     // This option will make packets be randomly routed between two equally costed paths
     // instead of always picking the same one. Is good for modelling load balancing!
     // Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
+    Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1448)); // Packet size for the TCP socket
 
     LogComponentEnable("P5-Satellite", LOG_LEVEL_ALL);
     LogComponentEnable("P5-Constellation-Handler", LOG_LEVEL_INFO);
@@ -31,7 +32,7 @@ int main(int argc, char* argv[]) {
     // ========================================= Setup default commandline parameters  =========================================
     std::string tleDataPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_tle_data.txt";
     std::string tleOrbitsPath = "scratch/P5-Satellite/resources/starlink_13-11-2024_orbits.txt";
-    uint32_t satelliteCount = 2;
+    uint32_t satelliteCount = 0;
     int simTime = 10;
     int updateInterval = 15;
 
@@ -140,10 +141,21 @@ int main(int argc, char* argv[]) {
 
     // Create a OnOff application on GS 0, streaming to GS 1
     Ipv4Address targetIP = gsNode1->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress();
-    OnOffHelper onoffHelper("ns3::TcpSocketFactory", InetSocketAddress(targetIP, port));
-    onoffHelper.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
-    onoffHelper.SetAttribute("DataRate", StringValue("1Mbps"));
-    ApplicationContainer appSource = onoffHelper.Install(gsNode0);
+
+    // Voice call scenario for checking RTT
+    // OnOffHelper onoffHelper("ns3::TcpSocketFactory", InetSocketAddress(targetIP, port));
+    // onoffHelper.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
+    // onoffHelper.SetAttribute("DataRate", StringValue("1Mbps"));
+    // onoffHelper.SetAttribute("PacketSize", UintegerValue(1448)); // Value of the actual data size of the packet size for the application
+    // ApplicationContainer appSource = onoffHelper.Install(gsNode0);
+
+    // File download scenario for checking CWND
+    BulkSendHelper bulkSendHelper ("ns3::TcpSocketFactory", InetSocketAddress(targetIP, port));
+    bulkSendHelper.SetAttribute("MaxBytes", UintegerValue(0));
+    bulkSendHelper.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
+    bulkSendHelper.SetAttribute("SendSize", UintegerValue(1448)); // Value of the actual data size of the packet size for the application
+    ApplicationContainer appSource = bulkSendHelper.Install(gsNode0);
+
     appSource.Start(Seconds(0));
     appSource.Stop(Seconds(simTime * 60));
 
