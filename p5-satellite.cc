@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     std::string satSatDataRate("100Mbps");
     std::string gsSatDataRate("100Mbps");
     std::string linkAcqTime("2s");
-    std::string congestionCA = "TcpNewReno";
+    std::string congestionCA = "TcpBbr";
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
@@ -143,18 +143,18 @@ int main(int argc, char* argv[]) {
     Ipv4Address targetIP = gsNode1->GetObject<Ipv4>()->GetAddress(1, 0).GetAddress();
 
     // Voice call scenario for checking RTT
-    // OnOffHelper onoffHelper("ns3::TcpSocketFactory", InetSocketAddress(targetIP, port));
-    // onoffHelper.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
-    // onoffHelper.SetAttribute("DataRate", StringValue("1Mbps"));
-    // onoffHelper.SetAttribute("PacketSize", UintegerValue(1448)); // Value of the actual data size of the packet size for the application
-    // ApplicationContainer appSource = onoffHelper.Install(gsNode0);
+    OnOffHelper onoffHelper("ns3::TcpSocketFactory", InetSocketAddress(targetIP, port));
+    onoffHelper.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
+    onoffHelper.SetAttribute("DataRate", StringValue("1Mbps"));
+    onoffHelper.SetAttribute("PacketSize", UintegerValue(1448)); // Value of the actual data size of the packet size for the application
+    ApplicationContainer appSource = onoffHelper.Install(gsNode0);
 
     // File download scenario for checking CWND
-    BulkSendHelper bulkSendHelper ("ns3::TcpSocketFactory", InetSocketAddress(targetIP, port));
-    bulkSendHelper.SetAttribute("MaxBytes", UintegerValue(0));
-    bulkSendHelper.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
-    bulkSendHelper.SetAttribute("SendSize", UintegerValue(1448)); // Value of the actual data size of the packet size for the application
-    ApplicationContainer appSource = bulkSendHelper.Install(gsNode0);
+    // BulkSendHelper bulkSendHelper ("ns3::TcpSocketFactory", InetSocketAddress(targetIP, port));
+    // bulkSendHelper.SetAttribute("MaxBytes", UintegerValue(0));
+    // bulkSendHelper.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
+    // bulkSendHelper.SetAttribute("SendSize", UintegerValue(1448)); // Value of the actual data size of the packet size for the application
+    // ApplicationContainer appSource = bulkSendHelper.Install(gsNode0);
 
     appSource.Start(Seconds(0));
     appSource.Stop(Seconds(simTime * 60));

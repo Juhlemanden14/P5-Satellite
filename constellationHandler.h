@@ -63,7 +63,7 @@ class Constellation
         TimeValue linkAcquisitionTime = Seconds(0);
 
         // Max distance 
-        double maxSatToSatDistance = 3000.0;
+        double maxSatToSatDistance = 5000.0;
         double maxGStoSatDistance = 3000.0; // km
         // Idk
         double c = 299792458.0;             // speed of light (m/s)
