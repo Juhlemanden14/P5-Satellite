@@ -104,7 +104,7 @@ NodeContainer Constellation::createSatellitesFromTLEAndOrbits(std::string tleDat
     
     // Setup the error model
     Ptr<RateErrorModel> error_model = CreateObject<RateErrorModel>();
-    error_model->SetUnit(RateErrorModel::ERROR_UNIT_PACKET);
+    error_model->SetUnit(RateErrorModel::ERROR_UNIT_BIT);
     error_model->SetRate(satSatPacketLossRate);
     p2pHelper.SetDeviceAttribute("ReceiveErrorModel", PointerValue(error_model));
     
@@ -181,7 +181,7 @@ NodeContainer Constellation::createGroundStations(std::vector<GeoCoordinate> gro
 
     // Setup the error model
     Ptr<RateErrorModel> error_model = CreateObject<RateErrorModel>();
-    error_model->SetUnit(RateErrorModel::ERROR_UNIT_PACKET);
+    error_model->SetUnit(RateErrorModel::ERROR_UNIT_BIT);
     error_model->SetRate(gsSatPacketLossRate);
     p2pHelper.SetDeviceAttribute("ReceiveErrorModel", PointerValue(error_model));
 
