@@ -918,7 +918,7 @@ void Constellation::saveCompleteRoute(Ptr<Node> srcNode, Ptr<Node> dstNode){
         //         foreignNetDevice = tmpDevice;
         // }
         Ptr<Node> foreignNode = foreignNetDevice->GetNode();
-        NS_LOG_INFO("Forwarding from " << Names::FindName(currentNode) << "(" << interfaceOut << ") --> " << Names::FindName(foreignNode) << "(" << foreignNode->GetObject<Ipv4>()->GetInterfaceForDevice(foreignNetDevice) << ") at " << route->GetGateway());
+        // NS_LOG_INFO("Forwarding from " << Names::FindName(currentNode) << "(" << interfaceOut << ") --> " << Names::FindName(foreignNode) << "(" << foreignNode->GetObject<Ipv4>()->GetInterfaceForDevice(foreignNetDevice) << ") at " << route->GetGateway());
         
         // save states here to the vector
         std::pair<Ptr<Node>, int> currPair = {currentNode, interfaceOut};
