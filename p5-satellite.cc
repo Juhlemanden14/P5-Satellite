@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
     std::string satSatDataRate("100Mbps");
     std::string gsSatDataRate("100Mbps");
     std::string linkAcqTime("2s");
-    std::string congestionCA = "TcpBbr";
+    std::string congestionCA = "TcpNewReno";
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("tledata", "TLE Data path", tleDataPath);
